@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createSession, setSessionCookie, verifyPassword } from '@/lib/auth';
+import { createSession, setSessionCookie, verifyPassword, validateLoginToken } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
+    // Validate login token from URL
+    const url = new URL(req.url);
+    const loginToken = url.searchParams.get('token');
+    
+    if (!validateLoginToken(loginToken)) {
+      return NextResponse.json({ error: 'Invalid or missing access token' }, { status: 401 });
+    }
+    
     const { password } = await req.json();
     
     if (!password) {

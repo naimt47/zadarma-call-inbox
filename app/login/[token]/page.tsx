@@ -1,13 +1,38 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 
 export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const router = useRouter();
+  const params = useParams();
+  const token = params.token as string;
+  
+  // Validate token on mount
+  useEffect(() => {
+    async function validateToken() {
+      try {
+        const res = await fetch(`/api/validate-login-token?token=${encodeURIComponent(token)}`);
+        if (res.ok) {
+          setTokenValid(true);
+        } else {
+          setTokenValid(false);
+        }
+      } catch (err) {
+        setTokenValid(false);
+      }
+    }
+    
+    if (token) {
+      validateToken();
+    } else {
+      setTokenValid(false);
+    }
+  }, [token]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,7 +40,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch(`/api/login?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -34,6 +59,25 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+  
+  if (tokenValid === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-lg">Validating access...</div>
+      </div>
+    );
+  }
+  
+  if (tokenValid === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600">Invalid or missing access token.</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function Home() {
-  // Redirect to calls page (middleware will handle authentication)
-  redirect('/calls');
+  // Redirect to 404 - don't expose login URL
+  redirect('/404');
 }

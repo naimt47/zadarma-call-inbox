@@ -74,3 +74,13 @@ export async function verifyPassword(password: string): Promise<boolean> {
   // return await bcrypt.compare(password, correctPassword);
 }
 
+// Login page token validation
+export function validateLoginToken(token: string | null): boolean {
+  const validToken = process.env.LOGIN_ACCESS_TOKEN;
+  if (!validToken) {
+    console.error('LOGIN_ACCESS_TOKEN not set in environment variables');
+    return false;
+  }
+  
+  return token === validToken;
+}
