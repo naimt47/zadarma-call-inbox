@@ -59,6 +59,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password, extension: extension.trim(), deviceId }),
+        credentials: 'include', // CRITICAL: Without this, cookies won't be saved
       });
       
       if (res.ok) {
