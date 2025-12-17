@@ -62,8 +62,8 @@ export default function LoginPage() {
         }
         // Store extension
         localStorage.setItem('userExtension', extension.trim());
-        router.push('/calls');
-        router.refresh();
+        // Force full page reload to ensure cookie is sent
+        window.location.href = '/calls';
       } else {
         const data = await res.json();
         setError(data.error || 'Invalid password');
