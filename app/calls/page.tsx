@@ -104,26 +104,26 @@ export default function CallsPage() {
       // Check if it's an authentication error (401)
       // EventSource doesn't expose status, but we can check the readyState
       if (eventSource.readyState === EventSource.CLOSED) {
-        // Connection closed, might be auth issue - try to restore session
-        const backupToken = localStorage.getItem('session_token_backup');
-        if (backupToken) {
-          // Try to restore session
+        // Connection closed, might be auth issue - try to restore device token
+        const deviceToken = localStorage.getItem('device_token');
+        if (deviceToken) {
+          // Try to restore device token
           fetch('/api/restore-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionToken: backupToken }),
+            body: JSON.stringify({ deviceToken }),
             credentials: 'include',
           }).then(res => {
             if (res.ok) {
               // Reload page to reconnect
               window.location.reload();
             } else {
-              // No valid session, redirect to restore
+              // No valid device token, redirect to restore
               window.location.href = '/restore';
             }
           });
         } else {
-          // No backup token, redirect to restore
+          // No device token, redirect to restore
           window.location.href = '/restore';
         }
         return;

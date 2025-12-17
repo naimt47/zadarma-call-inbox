@@ -55,18 +55,13 @@ export default function LoginPage() {
       
       if (res.ok) {
         const data = await res.json();
-        // Store device token in localStorage (primary - never expires)
+        // Store device token in localStorage (never expires)
         if (data.deviceToken) {
           localStorage.setItem('device_token', data.deviceToken);
         }
-        // Store session token in localStorage as backup (for backward compatibility)
-        if (data.sessionToken) {
-          localStorage.setItem('session_token_backup', data.sessionToken);
-          localStorage.setItem('session_expires', data.expires);
-        }
         // Store extension
         localStorage.setItem('userExtension', extension.trim());
-        // Force full page reload to ensure cookie is sent
+        // Force full page reload
         window.location.href = '/calls';
       } else {
         const data = await res.json();

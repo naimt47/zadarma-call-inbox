@@ -30,33 +30,23 @@ export default function RestorePage() {
         }
       }
 
-      // Fall back to session token (for backward compatibility)
-      const backupToken = localStorage.getItem('session_token_backup');
-      const expiresStr = localStorage.getItem('session_expires');
+      // Try to restore device token if validation failed
+      if (deviceToken) {
+        try {
+          const res = await fetch('/api/restore-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceToken }),
+            credentials: 'include',
+          });
 
-      if (backupToken && expiresStr) {
-        const expires = new Date(expiresStr);
-        if (expires > new Date()) {
-          try {
-            const res = await fetch('/api/restore-session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sessionToken: backupToken }),
-              credentials: 'include',
-            });
-
-            if (res.ok) {
-              // Cookie restored, force full page reload to ensure cookie is sent
-              window.location.href = '/calls';
-              return;
-            }
-          } catch (err) {
-            console.error('Failed to restore session:', err);
+          if (res.ok) {
+            // Device token is valid, redirect to calls
+            window.location.href = '/calls';
+            return;
           }
-        } else {
-          // Expired, clear it
-          localStorage.removeItem('session_token_backup');
-          localStorage.removeItem('session_expires');
+        } catch (err) {
+          console.error('Failed to restore device token:', err);
         }
       }
 

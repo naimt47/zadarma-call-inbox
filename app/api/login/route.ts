@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSession, verifyPassword, validateLoginToken, createDeviceToken } from '@/lib/auth';
-
-const SESSION_COOKIE_NAME = 'call_inbox_session';
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+import { verifyPassword, validateLoginToken, createDeviceToken } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -31,50 +28,25 @@ export async function POST(req: Request) {
     // Create device token (never expires, for persistent login)
     const deviceToken = await createDeviceToken(extension.trim());
     
-    // Also create session token (for backward compatibility)
-    const sessionToken = await createSession();
-    const expires = new Date(Date.now() + SESSION_DURATION_MS);
-    
-    // Determine if we're on HTTPS (for secure flag)
-    // In production (Vercel), always HTTPS, so secure should be true
-    // In development, check the request URL
-    const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
-    
-    // CRITICAL: Cookies MUST have both maxAge AND expires for proper persistence
-    // Without expires, some browsers treat it as a session cookie (cleared on close)
-    // For mobile browsers, we need to be very explicit about persistence
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isHttps, // true in production (HTTPS), false in dev (HTTP)
-      sameSite: 'lax' as const,
-      maxAge: SESSION_DURATION_MS / 1000, // 30 days in seconds
-      expires: expires, // CRITICAL: Explicit expiration date for persistence
-      path: '/',
-      // Don't set domain - let it default to current domain (better for subdomains)
-    };
-    
-    // Create response with tokens in body (for localStorage)
+    // Create response with device token in body (stored in localStorage)
     const response = NextResponse.json({ 
       success: true,
-      deviceToken: deviceToken, // Primary: never expires, stored in localStorage
-      sessionToken: sessionToken, // Backup: for backward compatibility
-      expires: expires.toISOString(),
+      deviceToken: deviceToken, // Never expires, stored in localStorage
     });
     
-    // Set session cookie
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, cookieOptions);
-    
-    // Set extension cookie (same settings but httpOnly: false)
+    // Set extension cookie (for convenience, not for auth)
+    const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
     response.cookies.set('user_extension', extension.trim(), {
-      ...cookieOptions,
       httpOnly: false, // Allow client-side access
+      secure: isHttps,
+      sameSite: 'lax' as const,
+      maxAge: 10 * 365 * 24 * 60 * 60, // 10 years
+      path: '/',
     });
     
-    console.log('Session created:', {
-      token: sessionToken.substring(0, 8) + '...',
-      expires: expires.toISOString(),
-      secure: isHttps,
-      maxAge: SESSION_DURATION_MS / 1000,
+    console.log('Device token created:', {
+      token: deviceToken.substring(0, 8) + '...',
+      extension: extension.trim(),
     });
     
     return response;

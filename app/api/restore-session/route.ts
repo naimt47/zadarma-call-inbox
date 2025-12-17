@@ -1,43 +1,28 @@
 import { NextResponse } from 'next/server';
-import { validateSession, setSessionCookie } from '@/lib/auth';
-
-const SESSION_COOKIE_NAME = 'call_inbox_session';
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+import { validateDeviceToken } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const { sessionToken } = await req.json();
+    const { deviceToken } = await req.json();
     
-    if (!sessionToken || typeof sessionToken !== 'string') {
-      return NextResponse.json({ error: 'Session token is required' }, { status: 400 });
+    if (!deviceToken || typeof deviceToken !== 'string') {
+      return NextResponse.json({ error: 'Device token is required' }, { status: 400 });
     }
     
-    // Validate the session token from database
-    const isValid = await validateSession(sessionToken);
+    // Validate the device token from database
+    const validation = await validateDeviceToken(deviceToken);
     
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+    if (!validation.valid) {
+      return NextResponse.json({ error: 'Invalid or expired device token' }, { status: 401 });
     }
     
-    // Restore the cookie
-    const url = new URL(req.url);
-    const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
-    const expires = new Date(Date.now() + SESSION_DURATION_MS);
-    
-    const response = NextResponse.json({ success: true });
-    
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: isHttps,
-      sameSite: 'lax' as const,
-      maxAge: SESSION_DURATION_MS / 1000,
-      expires: expires,
-      path: '/',
+    // Token is valid, return success
+    return NextResponse.json({ 
+      success: true,
+      extension: validation.extension,
     });
-    
-    return response;
   } catch (error) {
-    console.error('Restore session error:', error);
+    console.error('Restore device token error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
