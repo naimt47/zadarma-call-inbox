@@ -4,8 +4,8 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
-  // Allow login page and API login endpoint
-  if (pathname === '/login' || pathname === '/api/login') {
+  // Allow obscure login page and API login endpoint
+  if (pathname === '/a7f3b2c9d1e4f5g6h8i0j2k4' || pathname === '/api/login') {
     return NextResponse.next();
   }
   
@@ -23,8 +23,8 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get('call_inbox_session')?.value;
   
   if (!sessionToken) {
-    // No session token, redirect to login
-    const loginUrl = new URL('/login', request.url);
+    // No session token, redirect to obscure login URL
+    const loginUrl = new URL('/a7f3b2c9d1e4f5g6h8i0j2k4', request.url);
     return NextResponse.redirect(loginUrl);
   }
   

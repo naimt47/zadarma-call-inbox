@@ -14,18 +14,28 @@ export function normalizePhoneNumber(phone: string): string {
 
 /**
  * Format phone number for display
+ * Database format: "38651395476" or "49123456789" (country code + number, no spaces)
+ * Slovenia: display as "051 395 476" (add leading 0, format with spaces)
+ * Foreign: display as "+49123456789" (add + prefix)
  */
 export function formatPhoneNumber(phone: string): string {
   const normalized = normalizePhoneNumber(phone);
   
   if (normalized.length === 0) return phone;
   
-  // Format as: +XXX XX XXX XXXX (adjust based on your country format)
-  // For now, return as-is or add basic formatting
-  if (normalized.length > 10) {
-    return `+${normalized.slice(0, -10)} ${normalized.slice(-10, -7)} ${normalized.slice(-7, -4)} ${normalized.slice(-4)}`;
+  // Slovenia (starts with 386)
+  if (normalized.startsWith('386')) {
+    const local = normalized.substring(3); // Remove "386"
+    const withZero = local.startsWith('0') ? local : `0${local}`; // Add leading 0 if not present
+    
+    // Format: "051 395 476"
+    if (withZero.length >= 9) {
+      return `${withZero.substring(0, 3)} ${withZero.substring(3, 6)} ${withZero.substring(6)}`;
+    }
+    return withZero;
   }
   
-  return normalized;
+  // Foreign countries: add + prefix
+  return `+${normalized}`;
 }
 

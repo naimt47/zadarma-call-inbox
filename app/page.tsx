@@ -10,7 +10,7 @@ export default async function Home() {
     // User is logged in, redirect to calls
     redirect('/calls');
   } else {
-    // User is not logged in, redirect to login
-    redirect('/login');
+    // User is not logged in, redirect to obscure login URL
+    redirect('/a7f3b2c9d1e4f5g6h8i0j2k4');
   }
 }

@@ -40,8 +40,8 @@ export default function CallsPage() {
         });
         
         if (res.status === 401) {
-          // Session expired or invalid, redirect to login
-          window.location.href = '/login';
+          // Session expired or invalid, redirect to obscure login URL
+          window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
           return;
         }
         
@@ -88,17 +88,17 @@ export default function CallsPage() {
       
       // Check if connection is closed (might be auth issue)
       if (eventSource.readyState === EventSource.CLOSED) {
-        // Connection closed, likely auth issue - redirect to login
+        // Connection closed, likely auth issue - redirect to obscure login URL
         eventSource.close();
-        window.location.href = '/login';
+        window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
         return;
       }
       
       // For other errors, try to reconnect after a delay
       setTimeout(() => {
         if (eventSource.readyState === EventSource.CLOSED) {
-          // Connection still closed, redirect to login
-          window.location.href = '/login';
+          // Connection still closed, redirect to obscure login URL
+          window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
         }
       }, 3000);
     };
@@ -215,28 +215,30 @@ export default function CallsPage() {
       </div>
       
       <div className="px-4 py-3">
-        <div className="mb-4 bg-white rounded-lg shadow p-4">
-          <label htmlFor="extension" className="block text-sm font-medium text-gray-700 mb-2">
-            Your Extension
-          </label>
-          <input
-            id="extension"
-            type="text"
-            value={extension}
-            onChange={(e) => {
-              const value = e.target.value;
-              setExtension(value);
-              // Save to localStorage
-              if (value.trim()) {
-                localStorage.setItem('userExtension', value.trim());
-              } else {
-                localStorage.removeItem('userExtension');
-              }
-            }}
-            placeholder="Enter your extension"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
+        {!extension && (
+          <div className="mb-4 bg-white rounded-lg shadow p-4">
+            <label htmlFor="extension" className="block text-sm font-medium text-gray-700 mb-2">
+              Your Extension
+            </label>
+            <input
+              id="extension"
+              type="text"
+              value={extension}
+              onChange={(e) => {
+                const value = e.target.value;
+                setExtension(value);
+                // Save to localStorage
+                if (value.trim()) {
+                  localStorage.setItem('userExtension', value.trim());
+                } else {
+                  localStorage.removeItem('userExtension');
+                }
+              }}
+              placeholder="Enter your extension"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
         
         {calls.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
