@@ -91,18 +91,30 @@ export async function verifyPassword(password: string): Promise<boolean> {
  * Get session token from cookie header (for API routes)
  */
 export function getSessionFromCookieHeader(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
+  if (!cookieHeader) {
+    console.log('Auth: No cookie header found');
+    return null;
+  }
+  
+  console.log('Auth: Cookie header received:', cookieHeader.substring(0, 100) + '...');
   
   const cookies = cookieHeader.split(';').map(c => c.trim());
   const sessionCookie = cookies.find(c => c.startsWith(`${SESSION_COOKIE_NAME}=`));
   
-  if (sessionCookie) {
-    const equalIndex = sessionCookie.indexOf('=');
-    if (equalIndex !== -1) {
-      return sessionCookie.substring(equalIndex + 1);
-    }
+  if (!sessionCookie) {
+    console.log('Auth: Session cookie not found in header. Available cookies:', cookies.map(c => c.split('=')[0]));
+    return null;
   }
   
+  // Extract value after the first '=' (handles cases where value might contain '=')
+  const equalIndex = sessionCookie.indexOf('=');
+  if (equalIndex !== -1) {
+    const token = sessionCookie.substring(equalIndex + 1);
+    console.log('Auth: Session token extracted:', token.substring(0, 20) + '...');
+    return token;
+  }
+  
+  console.log('Auth: Failed to extract token from cookie');
   return null;
 }
 
@@ -112,13 +124,19 @@ export function getSessionFromCookieHeader(cookieHeader: string | null): string 
 export async function validateAuth(req: Request): Promise<{ valid: boolean; token: string | null }> {
   try {
     const cookieHeader = req.headers.get('cookie');
+    console.log('Auth: Validating auth, cookie header present:', !!cookieHeader);
+    
     const sessionToken = getSessionFromCookieHeader(cookieHeader);
     
     if (!sessionToken) {
+      console.log('Auth: No session token found');
       return { valid: false, token: null };
     }
     
+    console.log('Auth: Validating session token:', sessionToken.substring(0, 20) + '...');
     const isValid = await validateSession(sessionToken);
+    console.log('Auth: Session validation result:', isValid);
+    
     return { valid: isValid, token: isValid ? sessionToken : null };
   } catch (error) {
     console.error('Error validating auth:', error);

@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
   // Allow login page and API login
-  if (pathname === LOGIN_PATH || pathname === '/api/login') {
+  if (pathname === LOGIN_PATH || pathname === '/api/login' || pathname === '/api/debug-cookies') {
     return NextResponse.next();
   }
   
@@ -25,8 +25,11 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get('call_inbox_session')?.value;
   
   if (!sessionToken) {
+    console.log('Middleware: No session cookie found, redirecting to login');
     return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
+  
+  console.log('Middleware: Session cookie found:', sessionToken.substring(0, 20) + '...');
   
   // Cookie exists, allow through - validation happens in server components/API routes
   return NextResponse.next();

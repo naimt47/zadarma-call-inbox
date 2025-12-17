@@ -40,6 +40,14 @@ export default function LoginPage() {
       if (res.ok) {
         // Save extension
         localStorage.setItem('userExtension', extension.trim());
+        
+        // Check if cookie was set by checking response headers
+        const setCookieHeader = res.headers.get('set-cookie');
+        console.log('Login response - Set-Cookie header:', setCookieHeader);
+        
+        // Wait a brief moment to ensure cookie is processed by browser
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Force a hard navigation to ensure cookies are set
         window.location.href = '/calls';
       } else {
