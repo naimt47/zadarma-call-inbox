@@ -20,44 +20,13 @@ export default function CallsPage() {
   const [extension, setExtension] = useState('');
   const [claiming, setClaiming] = useState<string | null>(null);
   
-  // Load extension and restore session from localStorage if cookie is missing (mobile browser fix)
+  // Load extension from cookie or localStorage
   useEffect(() => {
     function getCookie(name: string) {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
       if (parts.length === 2) return parts.pop()?.split(';').shift();
       return null;
-    }
-    
-    // Check if session cookie exists
-    const sessionCookie = getCookie('call_inbox_session');
-    
-    // If no cookie but localStorage has backup, restore it
-    if (!sessionCookie) {
-      const backupToken = localStorage.getItem('session_token_backup');
-      const expiresStr = localStorage.getItem('session_expires');
-      
-      if (backupToken && expiresStr) {
-        const expires = new Date(expiresStr);
-        // Only restore if not expired
-        if (expires > new Date()) {
-          // Restore session cookie from localStorage backup
-          fetch('/api/restore-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionToken: backupToken }),
-          }).catch(err => {
-            console.error('Failed to restore session:', err);
-            // Clear invalid backup
-            localStorage.removeItem('session_token_backup');
-            localStorage.removeItem('session_expires');
-          });
-        } else {
-          // Expired, clear it
-          localStorage.removeItem('session_token_backup');
-          localStorage.removeItem('session_expires');
-        }
-      }
     }
     
     // Load extension
