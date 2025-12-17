@@ -20,6 +20,21 @@ export default function CallsPage() {
   const [extension, setExtension] = useState('');
   const [claiming, setClaiming] = useState<string | null>(null);
   
+  // Load extension from cookie on mount
+  useEffect(() => {
+    function getCookie(name: string) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift();
+      return null;
+    }
+    
+    const savedExtension = getCookie('user_extension');
+    if (savedExtension) {
+      setExtension(savedExtension);
+    }
+  }, []);
+  
   // Fetch initial calls
   useEffect(() => {
     async function fetchCalls() {
@@ -164,110 +179,74 @@ export default function CallsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Call Inbox</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                View and manage missed calls in real-time
-              </p>
-            </div>
-            <Link
-              href="/mappings"
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm"
-            >
-              Manage Mappings
-            </Link>
+    <div className="min-h-screen bg-gray-50 pb-4">
+      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 flex justify-between items-center">
+        <h1 className="text-lg font-bold text-gray-900">Calls</h1>
+        <Link
+          href="/mappings"
+          className="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium active:bg-gray-700"
+        >
+          Mappings
+        </Link>
+      </div>
+      
+      <div className="px-4 py-3">
+        {extension && (
+          <div className="mb-3 text-sm text-gray-600">
+            Extension: <span className="font-semibold">{extension}</span>
           </div>
-          
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <label htmlFor="extension" className="block text-sm font-medium text-gray-700 mb-2">
-              Your Extension
-            </label>
-            <input
-              id="extension"
-              type="text"
-              value={extension}
-              onChange={(e) => setExtension(e.target.value)}
-              placeholder="Enter your extension"
-              className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
+        )}
+        
+        {calls.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            No calls found
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone Number
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Handled By
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Updated At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {calls.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                      No calls found
-                    </td>
-                  </tr>
-                ) : (
-                  calls.map((call) => (
-                    <tr key={call.phone_norm} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatPhoneNumber(call.phone_norm)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(call.status)}`}>
-                          {call.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {call.handled_by_ext || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatTime(call.updated_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        {call.status === 'missed' && (
-                          <button
-                            onClick={() => handleClaim(call.phone_norm)}
-                            disabled={claiming === call.phone_norm || !extension.trim()}
-                            className="text-blue-600 hover:text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {claiming === call.phone_norm ? 'Claiming...' : 'Claim'}
-                          </button>
-                        )}
-                        {call.status === 'claimed' && (
-                          <button
-                            onClick={() => handleMarkHandled(call.phone_norm)}
-                            disabled={claiming === call.phone_norm || !extension.trim()}
-                            className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {claiming === call.phone_norm ? 'Updating...' : 'Mark Handled'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        ) : (
+          <div className="space-y-3">
+            {calls.map((call) => (
+              <div key={call.phone_norm} className="bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <div className="font-semibold text-base text-gray-900 mb-1">
+                      {formatPhoneNumber(call.phone_norm)}
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(call.status)}`}>
+                        {call.status}
+                      </span>
+                      {call.handled_by_ext && (
+                        <span className="text-xs text-gray-500">by {call.handled_by_ext}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatTime(call.updated_at)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  {call.status === 'missed' && (
+                    <button
+                      onClick={() => handleClaim(call.phone_norm)}
+                      disabled={claiming === call.phone_norm || !extension.trim()}
+                      className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg font-medium text-sm active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {claiming === call.phone_norm ? 'Claiming...' : 'Claim'}
+                    </button>
+                  )}
+                  {call.status === 'claimed' && (
+                    <button
+                      onClick={() => handleMarkHandled(call.phone_norm)}
+                      disabled={claiming === call.phone_norm || !extension.trim()}
+                      className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg font-medium text-sm active:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {claiming === call.phone_norm ? 'Updating...' : 'Mark Handled'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

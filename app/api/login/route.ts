@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSession, setSessionCookie, verifyPassword, validateLoginToken } from '@/lib/auth';
+import { createSession, setSessionCookie, setExtensionCookie, verifyPassword, validateLoginToken } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -11,10 +11,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid or missing access token' }, { status: 401 });
     }
     
-    const { password } = await req.json();
+    const { password, extension } = await req.json();
     
     if (!password) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+    }
+    
+    if (!extension || typeof extension !== 'string' || extension.trim() === '') {
+      return NextResponse.json({ error: 'Extension is required' }, { status: 400 });
     }
     
     if (!await verifyPassword(password)) {
@@ -23,6 +27,7 @@ export async function POST(req: Request) {
     
     const sessionToken = await createSession();
     await setSessionCookie(sessionToken);
+    await setExtensionCookie(extension.trim());
     
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -57,6 +57,22 @@ export async function setSessionCookie(token: string): Promise<void> {
   });
 }
 
+export async function setExtensionCookie(extension: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set('user_extension', extension, {
+    httpOnly: false, // Allow client-side access
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: SESSION_DURATION_MS / 1000,
+    path: '/',
+  });
+}
+
+export async function getExtensionFromRequest(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get('user_extension')?.value || null;
+}
+
 export async function deleteSession(token: string): Promise<void> {
   const dbPool = getPool();
   await dbPool.query('DELETE FROM user_sessions WHERE session_token = $1', [token]);
