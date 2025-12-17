@@ -31,13 +31,9 @@ export async function POST(req: Request) {
     const sessionToken = await createSession();
     const expires = new Date(Date.now() + SESSION_DURATION_MS);
     
-    // Create response with cookies set in headers
-    const response = NextResponse.json({ success: true });
-    
     // Determine if we're on HTTPS (for secure flag)
     // In production (Vercel), always HTTPS, so secure should be true
     // In development, check the request URL
-
     const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
     
     // CRITICAL: Cookies MUST have both maxAge AND expires for proper persistence
@@ -52,6 +48,13 @@ export async function POST(req: Request) {
       path: '/',
       // Don't set domain - let it default to current domain (better for subdomains)
     };
+    
+    // Create response with session token in body (for localStorage backup)
+    const response = NextResponse.json({ 
+      success: true,
+      sessionToken: sessionToken, // For localStorage backup on mobile
+      expires: expires.toISOString(),
+    });
     
     // Set session cookie
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, cookieOptions);
@@ -69,15 +72,7 @@ export async function POST(req: Request) {
       maxAge: SESSION_DURATION_MS / 1000,
     });
     
-    // Return session token in response for localStorage backup (mobile browsers sometimes clear cookies)
-    // Client will store this as backup if cookie fails
-    return NextResponse.json({ 
-      success: true,
-      sessionToken: sessionToken, // For localStorage backup on mobile
-      expires: expires.toISOString(),
-    }, {
-      headers: response.headers,
-    });
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
