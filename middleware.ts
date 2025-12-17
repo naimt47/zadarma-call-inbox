@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { validateSession } from './lib/auth';
 
-export const runtime = 'nodejs'; // Use Node.js runtime for database access
-
+// Middleware runs on Edge Runtime - can't use Node.js modules like crypto or database
+// So we do basic cookie check here, full validation happens in API routes
 export async function middleware(request: NextRequest) {
   // Allow login page and API login
   if (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/api/login') {
     return NextResponse.next();
   }
   
-  // Check session for protected routes
+  // Check session cookie for protected routes
   if (
     request.nextUrl.pathname.startsWith('/calls') || 
     request.nextUrl.pathname.startsWith('/api/calls') ||
@@ -19,19 +18,8 @@ export async function middleware(request: NextRequest) {
   ) {
     const sessionToken = request.cookies.get('call_inbox_session')?.value;
     
+    // Basic check - full validation with DB happens in API routes
     if (!sessionToken) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    
-    // Validate session (async DB call - middleware supports this in Node.js runtime)
-    try {
-      const isValid = await validateSession(sessionToken);
-      if (!isValid) {
-        return NextResponse.redirect(new URL('/login', request.url));
-      }
-    } catch (error) {
-      console.error('Middleware session validation error:', error);
-      // On error, redirect to login for safety
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
