@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { validateSession } from './lib/auth';
 
+export const runtime = 'nodejs'; // Use Node.js runtime for database access
+
 export async function middleware(request: NextRequest) {
   // Allow login page and API login
   if (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/api/login') {

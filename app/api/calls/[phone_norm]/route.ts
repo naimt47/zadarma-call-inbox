@@ -6,7 +6,7 @@ import { normalizePhoneNumber } from '@/lib/utils';
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { phone_norm: string } }
+  { params }: { params: Promise<{ phone_norm: string }> }
 ) {
   try {
     // Check authentication
@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const { phone_norm: phoneNormParam } = params;
+    const { phone_norm: phoneNormParam } = await params;
     const phoneNorm = normalizePhoneNumber(phoneNormParam);
     
     const body = await req.json();

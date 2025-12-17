@@ -6,7 +6,7 @@ import { normalizePhoneNumber } from '@/lib/utils';
 // PATCH /api/mappings/[phone_norm] - Update mapping
 export async function PATCH(
   req: Request,
-  { params }: { params: { phone_norm: string } }
+  { params }: { params: Promise<{ phone_norm: string }> }
 ) {
   try {
     // Check authentication
@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const { phone_norm: phoneNormParam } = params;
+    const { phone_norm: phoneNormParam } = await params;
     const phoneNorm = normalizePhoneNumber(phoneNormParam);
     
     const body = await req.json();
@@ -81,7 +81,7 @@ export async function PATCH(
 // DELETE /api/mappings/[phone_norm] - Delete mapping
 export async function DELETE(
   req: Request,
-  { params }: { params: { phone_norm: string } }
+  { params }: { params: Promise<{ phone_norm: string }> }
 ) {
   try {
     // Check authentication
@@ -90,7 +90,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const { phone_norm: phoneNormParam } = params;
+    const { phone_norm: phoneNormParam } = await params;
     const phoneNorm = normalizePhoneNumber(phoneNormParam);
     
     // Delete from zadarma_extension_mappings
