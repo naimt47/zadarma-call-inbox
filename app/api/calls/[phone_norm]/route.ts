@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest, validateSession } from '@/lib/auth';
+import { validateAuth } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { sendCallStatusNotification } from '@/lib/onesignal';
 import { normalizePhoneNumber } from '@/lib/utils';
@@ -9,9 +9,9 @@ export async function PATCH(
   { params }: { params: Promise<{ phone_norm: string }> }
 ) {
   try {
-    // Check authentication
-    const sessionToken = await getSessionFromRequest();
-    if (!await validateSession(sessionToken)) {
+    // Check authentication (device token or session token)
+    const auth = await validateAuth(req);
+    if (!auth.valid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     

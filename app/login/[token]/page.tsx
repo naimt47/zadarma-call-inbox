@@ -55,7 +55,11 @@ export default function LoginPage() {
       
       if (res.ok) {
         const data = await res.json();
-        // Store session token in localStorage as backup (mobile browsers sometimes clear cookies)
+        // Store device token in localStorage (primary - never expires)
+        if (data.deviceToken) {
+          localStorage.setItem('device_token', data.deviceToken);
+        }
+        // Store session token in localStorage as backup (for backward compatibility)
         if (data.sessionToken) {
           localStorage.setItem('session_token_backup', data.sessionToken);
           localStorage.setItem('session_expires', data.expires);

@@ -40,8 +40,18 @@ export default function CallsPage() {
   useEffect(() => {
     async function fetchCalls() {
       try {
+        // Get device token from localStorage
+        const deviceToken = localStorage.getItem('device_token');
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        if (deviceToken) {
+          headers['x-device-token'] = deviceToken;
+        }
+        
         const res = await fetch('/api/calls', {
           credentials: 'include',
+          headers,
         });
         if (res.status === 401) {
           // Session expired or invalid, redirect to restore
@@ -65,7 +75,12 @@ export default function CallsPage() {
   
   // Set up SSE connection for real-time updates
   useEffect(() => {
-    const eventSource = new EventSource('/api/calls/stream');
+    // EventSource doesn't support custom headers, so we'll use query param for device token
+    const deviceToken = localStorage.getItem('device_token');
+    const streamUrl = deviceToken 
+      ? `/api/calls/stream?device_token=${encodeURIComponent(deviceToken)}`
+      : '/api/calls/stream';
+    const eventSource = new EventSource(streamUrl);
     
     eventSource.onmessage = (event) => {
       try {
@@ -133,9 +148,17 @@ export default function CallsPage() {
     
     setClaiming(phoneNorm);
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch(`/api/calls/${encodeURIComponent(phoneNorm)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: 'claimed', extension: extension.trim() }),
         credentials: 'include',
       });
@@ -161,9 +184,17 @@ export default function CallsPage() {
     
     setClaiming(phoneNorm);
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch(`/api/calls/${encodeURIComponent(phoneNorm)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: 'handled', extension: extension.trim() }),
         credentials: 'include',
       });

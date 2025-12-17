@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSession, verifyPassword, validateLoginToken } from '@/lib/auth';
+import { createSession, verifyPassword, validateLoginToken, createDeviceToken } from '@/lib/auth';
 
 const SESSION_COOKIE_NAME = 'call_inbox_session';
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -28,6 +28,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
     
+    // Create device token (never expires, for persistent login)
+    const deviceToken = await createDeviceToken(extension.trim());
+    
+    // Also create session token (for backward compatibility)
     const sessionToken = await createSession();
     const expires = new Date(Date.now() + SESSION_DURATION_MS);
     
@@ -49,10 +53,11 @@ export async function POST(req: Request) {
       // Don't set domain - let it default to current domain (better for subdomains)
     };
     
-    // Create response with session token in body (for localStorage backup)
+    // Create response with tokens in body (for localStorage)
     const response = NextResponse.json({ 
       success: true,
-      sessionToken: sessionToken, // For localStorage backup on mobile
+      deviceToken: deviceToken, // Primary: never expires, stored in localStorage
+      sessionToken: sessionToken, // Backup: for backward compatibility
       expires: expires.toISOString(),
     });
     

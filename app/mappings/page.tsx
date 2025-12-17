@@ -30,8 +30,17 @@ export default function MappingsPage() {
   // Fetch mappings
   const fetchMappings = async () => {
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch('/api/mappings', {
         credentials: 'include',
+        headers,
       });
       if (res.status === 401) {
         // Session expired or invalid, redirect to restore
@@ -63,9 +72,17 @@ export default function MappingsPage() {
     }
     
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch('/api/mappings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData),
         credentials: 'include',
       });
@@ -100,9 +117,17 @@ export default function MappingsPage() {
     if (!editingData) return;
     
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch(`/api/mappings/${encodeURIComponent(phoneNumber)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           extension: editingData.extension,
           expires_at: editingData.expires_at,
@@ -130,8 +155,15 @@ export default function MappingsPage() {
     
     setDeleting(phoneNumber);
     try {
+      const deviceToken = localStorage.getItem('device_token');
+      const headers: HeadersInit = {};
+      if (deviceToken) {
+        headers['x-device-token'] = deviceToken;
+      }
+      
       const res = await fetch(`/api/mappings/${encodeURIComponent(phoneNumber)}`, {
         method: 'DELETE',
+        headers,
         credentials: 'include',
       });
       

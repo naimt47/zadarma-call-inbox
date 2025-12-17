@@ -8,6 +8,29 @@ export default function RestorePage() {
 
   useEffect(() => {
     async function restoreSession() {
+      // First try device token (never expires, preferred method)
+      const deviceToken = localStorage.getItem('device_token');
+      if (deviceToken) {
+        try {
+          // Test if device token is valid by making a test API call
+          const res = await fetch('/api/calls', {
+            headers: {
+              'x-device-token': deviceToken,
+            },
+            credentials: 'include',
+          });
+
+          if (res.ok || res.status === 200) {
+            // Device token is valid, redirect to calls
+            window.location.href = '/calls';
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to validate device token:', err);
+        }
+      }
+
+      // Fall back to session token (for backward compatibility)
       const backupToken = localStorage.getItem('session_token_backup');
       const expiresStr = localStorage.getItem('session_expires');
 

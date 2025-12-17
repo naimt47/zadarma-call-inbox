@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest, validateSession } from '@/lib/auth';
+import { validateAuth } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export async function GET(req: Request) {
   try {
-    // Check authentication
-    const sessionToken = await getSessionFromRequest();
+    // Check authentication (device token or session token)
+    const auth = await validateAuth(req);
     
-    if (!sessionToken) {
-      console.log('GET /api/calls: No session token in cookies');
-      return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
-    }
-    
-    const isValid = await validateSession(sessionToken);
-    if (!isValid) {
-      console.log('GET /api/calls: Session validation failed');
-      return NextResponse.json({ error: 'Unauthorized - Invalid session' }, { status: 401 });
+    if (!auth.valid) {
+      console.log('GET /api/calls: Authentication failed');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     // Query call_claims table

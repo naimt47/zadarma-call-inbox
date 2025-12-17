@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest, validateSession } from '@/lib/auth';
+import { validateAuth } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { normalizePhoneNumber } from '@/lib/utils';
 
 // GET /api/mappings - List all mappings
 export async function GET(req: Request) {
   try {
-    // Check authentication
-    const sessionToken = await getSessionFromRequest();
-    if (!await validateSession(sessionToken)) {
+    // Check authentication (device token or session token)
+    const auth = await validateAuth(req);
+    if (!auth.valid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -34,9 +34,9 @@ export async function GET(req: Request) {
 // POST /api/mappings - Create new mapping
 export async function POST(req: Request) {
   try {
-    // Check authentication
-    const sessionToken = await getSessionFromRequest();
-    if (!await validateSession(sessionToken)) {
+    // Check authentication (device token or session token)
+    const auth = await validateAuth(req);
+    if (!auth.valid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
