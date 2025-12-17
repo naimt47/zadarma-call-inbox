@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSession, setSessionCookie, verifyPassword } from '@/lib/auth';
+import { createSession, verifyPassword, COOKIE_CONFIG } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -15,16 +15,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
     
-    // Create session
     const sessionToken = await createSession();
     
-    // Set cookie
-    await setSessionCookie(sessionToken);
+    // Create response and set cookie on it (must be on the returned response)
+    const response = NextResponse.json({ success: true });
     
-    return NextResponse.json({ success: true });
+    response.cookies.set(COOKIE_CONFIG.name, sessionToken, {
+      httpOnly: COOKIE_CONFIG.httpOnly,
+      secure: COOKIE_CONFIG.secure,
+      sameSite: COOKIE_CONFIG.sameSite,
+      path: COOKIE_CONFIG.path,
+      maxAge: COOKIE_CONFIG.maxAge, // in seconds
+      expires: COOKIE_CONFIG.expires, // explicit expiry date
+      // domain: COOKIE_CONFIG.domain, // uncomment if needed for custom domain
+    });
+    
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

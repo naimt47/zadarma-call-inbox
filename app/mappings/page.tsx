@@ -30,21 +30,14 @@ export default function MappingsPage() {
   // Fetch mappings
   const fetchMappings = async () => {
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch('/api/mappings', {
         credentials: 'include',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       if (res.status === 401) {
-        // Session expired or invalid, redirect to restore
-        window.location.href = '/restore';
+        window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
         return;
       }
       if (!res.ok) {
@@ -72,17 +65,11 @@ export default function MappingsPage() {
     }
     
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch('/api/mappings', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(formData),
         credentials: 'include',
       });
@@ -117,17 +104,11 @@ export default function MappingsPage() {
     if (!editingData) return;
     
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch(`/api/mappings/${encodeURIComponent(phoneNumber)}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           extension: editingData.extension,
           expires_at: editingData.expires_at,
@@ -155,15 +136,11 @@ export default function MappingsPage() {
     
     setDeleting(phoneNumber);
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {};
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch(`/api/mappings/${encodeURIComponent(phoneNumber)}`, {
         method: 'DELETE',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
       

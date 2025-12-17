@@ -1,21 +1,19 @@
-import { cookies } from 'next/headers';
 import { query } from './db';
 
 const SESSION_COOKIE_NAME = 'call_inbox_session';
-const SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 365 days - login once and stay logged in
+const SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 365 days
 
 /**
- * Generate a secure random session token using Web Crypto API (works in Edge Runtime)
+ * Generate secure session token using Web Crypto API
  */
 export async function generateSessionToken(): Promise<string> {
-  // Use Web Crypto API which works in both Node.js and Edge Runtime
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**
- * Create a new session in the database and return the token
+ * Create session in database
  */
 export async function createSession(): Promise<string> {
   const token = await generateSessionToken();
@@ -27,7 +25,6 @@ export async function createSession(): Promise<string> {
       [token, expiresAt]
     );
   } catch (error: any) {
-    // If table doesn't exist, create it
     if (error.code === '42P01') {
       await query(`
         CREATE TABLE IF NOT EXISTS user_sessions (
@@ -39,7 +36,6 @@ export async function createSession(): Promise<string> {
       await query(
         'CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions (expires_at)'
       );
-      // Retry insert
       await query(
         'INSERT INTO user_sessions (session_token, expires_at) VALUES ($1, $2)',
         [token, expiresAt]
@@ -53,7 +49,7 @@ export async function createSession(): Promise<string> {
 }
 
 /**
- * Validate a session token from the database
+ * Validate session token
  */
 export async function validateSession(token: string | null): Promise<boolean> {
   if (!token) return false;
@@ -65,14 +61,12 @@ export async function validateSession(token: string | null): Promise<boolean> {
     );
     
     if (result.rows.length === 0) {
-      // Cleanup expired session
       await query('DELETE FROM user_sessions WHERE session_token = $1', [token]);
       return false;
     }
     
     return true;
   } catch (error: any) {
-    // If table doesn't exist, return false
     if (error.code === '42P01') {
       return false;
     }
@@ -82,55 +76,7 @@ export async function validateSession(token: string | null): Promise<boolean> {
 }
 
 /**
- * Get session token from request cookies
- */
-export async function getSessionFromRequest(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    return cookieStore.get(SESSION_COOKIE_NAME)?.value || null;
-  } catch (error) {
-    return null;
-  }
-}
-
-/**
- * Set session cookie in the response
- */
-export async function setSessionCookie(token: string): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_DURATION_MS / 1000,
-    path: '/',
-    // Ensure cookie persists across browser sessions
-    expires: new Date(Date.now() + SESSION_DURATION_MS),
-  });
-}
-
-/**
- * Delete session from database and clear cookie
- */
-export async function deleteSession(token: string | null): Promise<void> {
-  if (!token) return;
-  
-  try {
-    await query('DELETE FROM user_sessions WHERE session_token = $1', [token]);
-  } catch (error) {
-    console.error('Error deleting session:', error);
-  }
-  
-  try {
-    const cookieStore = await cookies();
-    cookieStore.delete(SESSION_COOKIE_NAME);
-  } catch (error) {
-    // Ignore cookie deletion errors
-  }
-}
-
-/**
- * Verify password against environment variable
+ * Verify password
  */
 export async function verifyPassword(password: string): Promise<boolean> {
   const correctPassword = process.env.CALL_INBOX_PASSWORD;
@@ -138,31 +84,35 @@ export async function verifyPassword(password: string): Promise<boolean> {
     console.error('CALL_INBOX_PASSWORD environment variable is not set');
     return false;
   }
-  
   return password === correctPassword;
 }
 
 /**
- * Validate authentication from request (for API routes)
- * Returns object with valid flag and session token
+ * Get session token from cookie header (for API routes)
+ */
+export function getSessionFromCookieHeader(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  const sessionCookie = cookies.find(c => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+  
+  if (sessionCookie) {
+    const equalIndex = sessionCookie.indexOf('=');
+    if (equalIndex !== -1) {
+      return sessionCookie.substring(equalIndex + 1);
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Validate auth from request (for API routes)
  */
 export async function validateAuth(req: Request): Promise<{ valid: boolean; token: string | null }> {
   try {
-    // Get session from cookie
     const cookieHeader = req.headers.get('cookie');
-    let sessionToken: string | null = null;
-    
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').map(c => c.trim());
-      const sessionCookie = cookies.find(c => c.startsWith(`${SESSION_COOKIE_NAME}=`));
-      if (sessionCookie) {
-        // Properly extract value after the = sign (handles cases where value might contain =)
-        const equalIndex = sessionCookie.indexOf('=');
-        if (equalIndex !== -1) {
-          sessionToken = sessionCookie.substring(equalIndex + 1);
-        }
-      }
-    }
+    const sessionToken = getSessionFromCookieHeader(cookieHeader);
     
     if (!sessionToken) {
       return { valid: false, token: null };
@@ -176,3 +126,35 @@ export async function validateAuth(req: Request): Promise<{ valid: boolean; toke
   }
 }
 
+/**
+ * Get session from Next.js cookies (for server components)
+ */
+export async function getSessionFromRequest(): Promise<string | null> {
+  try {
+    // Dynamic import for server components (cookies() must be called in async context)
+    // @ts-expect-error - next/headers is available in server components at runtime
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    return cookieStore.get(SESSION_COOKIE_NAME)?.value || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Cookie configuration for persistence
+ * maxAge is in SECONDS (one year = 60 * 60 * 24 * 365)
+ * expires is in milliseconds (Date.now() + milliseconds)
+ */
+export const COOKIE_CONFIG = {
+  name: SESSION_COOKIE_NAME,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  // One year in seconds (not milliseconds)
+  maxAge: 60 * 60 * 24 * 365,
+  // Explicit expiry date in milliseconds
+  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+  // domain: '.yourdomain.com' // Uncomment when using custom domain for cross-subdomain
+};
