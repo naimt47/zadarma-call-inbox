@@ -37,11 +37,13 @@ export async function POST(req: Request) {
     
     // Set device token as cookie (so middleware can read it)
     const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
+    const expires = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000); // 10 years from now
     response.cookies.set('device_token', deviceToken, {
       httpOnly: false, // Allow client-side access for localStorage backup
       secure: isHttps,
       sameSite: 'lax' as const,
-      maxAge: 10 * 365 * 24 * 60 * 60, // 10 years
+      maxAge: 10 * 365 * 24 * 60 * 60, // 10 years in seconds
+      expires: expires, // Explicit expiration date (REQUIRED for persistence on mobile browsers)
       path: '/',
     });
     

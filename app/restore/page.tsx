@@ -41,8 +41,11 @@ export default function RestorePage() {
           });
 
           if (res.ok) {
-            // Device token is valid, redirect to calls
-            window.location.href = '/calls';
+            // Cookie is set, wait a moment for browser to process it, then redirect
+            // This ensures the cookie is saved before middleware checks it
+            setTimeout(() => {
+              window.location.href = '/calls';
+            }, 100);
             return;
           }
         } catch (err) {
