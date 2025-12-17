@@ -5,8 +5,15 @@ export async function GET(req: Request) {
   // Check session from cookie (not query param)
   const sessionToken = await getSessionFromRequest();
   
-  if (!await validateSession(sessionToken)) {
-    return new Response('Unauthorized', { status: 401 });
+  if (!sessionToken) {
+    console.log('SSE: No session token found in cookies');
+    return new Response('Unauthorized - No session', { status: 401 });
+  }
+  
+  const isValid = await validateSession(sessionToken);
+  if (!isValid) {
+    console.log('SSE: Session validation failed for token:', sessionToken.substring(0, 8) + '...');
+    return new Response('Unauthorized - Invalid session', { status: 401 });
   }
   
   // Create readable stream for SSE

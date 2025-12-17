@@ -34,24 +34,37 @@ export async function POST(req: Request) {
     // Create response with cookies set in headers
     const response = NextResponse.json({ success: true });
     
-    // Set session cookie
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
+    // Determine if we're on HTTPS (for secure flag)
+    // In production (Vercel), always HTTPS, so secure should be true
+    // In development, check the request URL
+    const url = new URL(req.url);
+    const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
+    
+    // CRITICAL: Cookies MUST have both maxAge AND expires for proper persistence
+    // Without expires, some browsers treat it as a session cookie (cleared on close)
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_DURATION_MS / 1000,
-      expires: expires,
+      secure: isHttps, // true in production (HTTPS), false in dev (HTTP)
+      sameSite: 'lax' as const,
+      maxAge: SESSION_DURATION_MS / 1000, // 30 days in seconds
+      expires: expires, // CRITICAL: Explicit expiration date for persistence
       path: '/',
+    };
+    
+    // Set session cookie
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, cookieOptions);
+    
+    // Set extension cookie (same settings but httpOnly: false)
+    response.cookies.set('user_extension', extension.trim(), {
+      ...cookieOptions,
+      httpOnly: false, // Allow client-side access
     });
     
-    // Set extension cookie
-    response.cookies.set('user_extension', extension.trim(), {
-      httpOnly: false, // Allow client-side access
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+    console.log('Session created:', {
+      token: sessionToken.substring(0, 8) + '...',
+      expires: expires.toISOString(),
+      secure: isHttps,
       maxAge: SESSION_DURATION_MS / 1000,
-      expires: expires,
-      path: '/',
     });
     
     return response;

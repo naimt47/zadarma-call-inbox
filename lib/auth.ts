@@ -28,17 +28,31 @@ export async function createSession(): Promise<string> {
 }
 
 export async function validateSession(token: string | null): Promise<boolean> {
-  if (!token) return false;
+  if (!token) {
+    console.log('validateSession: No token provided');
+    return false;
+  }
   
-  // MUST check Postgres (serverless requires persistent storage)
-  const dbPool = getPool();
-  
-  const result = await dbPool.query(
-    'SELECT expires_at FROM user_sessions WHERE session_token = $1 AND expires_at > NOW()',
-    [token]
-  );
-  
-  return result.rows.length > 0;
+  try {
+    // MUST check Postgres (serverless requires persistent storage)
+    const dbPool = getPool();
+    
+    const result = await dbPool.query(
+      'SELECT expires_at FROM user_sessions WHERE session_token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    
+    const isValid = result.rows.length > 0;
+    
+    if (!isValid) {
+      console.log('validateSession: Session not found or expired for token:', token.substring(0, 8) + '...');
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('validateSession error:', error);
+    return false;
+  }
 }
 
 export async function getSessionFromRequest(): Promise<string | null> {

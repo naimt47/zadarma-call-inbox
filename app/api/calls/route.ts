@@ -6,8 +6,16 @@ export async function GET(req: Request) {
   try {
     // Check authentication
     const sessionToken = await getSessionFromRequest();
-    if (!await validateSession(sessionToken)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    if (!sessionToken) {
+      console.log('GET /api/calls: No session token in cookies');
+      return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
+    }
+    
+    const isValid = await validateSession(sessionToken);
+    if (!isValid) {
+      console.log('GET /api/calls: Session validation failed');
+      return NextResponse.json({ error: 'Unauthorized - Invalid session' }, { status: 401 });
     }
     
     // Query call_claims table
