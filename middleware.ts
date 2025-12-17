@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith('/login/') ||
     request.nextUrl.pathname === '/api/login' ||
-    request.nextUrl.pathname === '/api/validate-login-token'
+    request.nextUrl.pathname === '/api/validate-login-token' ||
+    request.nextUrl.pathname === '/api/restore-session'
   ) {
     return NextResponse.next();
   }

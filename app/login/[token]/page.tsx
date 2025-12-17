@@ -54,6 +54,14 @@ export default function LoginPage() {
       });
       
       if (res.ok) {
+        const data = await res.json();
+        // Store session token in localStorage as backup (mobile browsers sometimes clear cookies)
+        if (data.sessionToken) {
+          localStorage.setItem('session_token_backup', data.sessionToken);
+          localStorage.setItem('session_expires', data.expires);
+        }
+        // Store extension
+        localStorage.setItem('userExtension', extension.trim());
         router.push('/calls');
         router.refresh();
       } else {
