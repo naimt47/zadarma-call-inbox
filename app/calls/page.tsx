@@ -32,6 +32,7 @@ export default function CallsPage() {
   useEffect(() => {
     async function fetchCalls() {
       try {
+        console.log('Frontend: Fetching calls from /api/calls');
         const res = await fetch('/api/calls', {
           credentials: 'include',
           headers: {
@@ -39,21 +40,45 @@ export default function CallsPage() {
           },
         });
         
+        console.log('Frontend: Response status:', res.status);
+        console.log('Frontend: Response ok:', res.ok);
+        
         if (res.status === 401) {
+          console.log('Frontend: Unauthorized, redirecting to login');
           // Session expired or invalid, redirect to obscure login URL
           window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
           return;
         }
         
         if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Frontend: Response not ok:', res.status, errorText);
           throw new Error('Failed to fetch calls');
         }
         
         const data = await res.json();
-        setCalls(data);
+        console.log('Frontend: Received data:', data);
+        console.log('Frontend: Data type:', typeof data);
+        console.log('Frontend: Is array:', Array.isArray(data));
+        console.log('Frontend: Number of calls:', Array.isArray(data) ? data.length : 'NOT AN ARRAY');
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('Frontend: First call:', data[0]);
+          console.log('Frontend: First call keys:', Object.keys(data[0]));
+        } else if (!Array.isArray(data)) {
+          console.error('Frontend: Data is not an array!', data);
+        }
+        
+        // Ensure we're setting an array
+        if (Array.isArray(data)) {
+          setCalls(data);
+        } else {
+          console.error('Frontend: Setting empty array because data is not an array');
+          setCalls([]);
+        }
         setLoading(false);
-      } catch (err) {
-        setError('Failed to load calls');
+      } catch (err: any) {
+        console.error('Frontend: Error fetching calls:', err);
+        setError('Failed to load calls: ' + (err.message || 'Unknown error'));
         setLoading(false);
       }
     }
@@ -64,30 +89,43 @@ export default function CallsPage() {
   // Set up SSE connection for real-time updates
   useEffect(() => {
     // EventSource automatically sends cookies (including session cookie)
+    console.log('Frontend: Setting up SSE connection to /api/calls/stream');
     const eventSource = new EventSource('/api/calls/stream');
+    
+    eventSource.onopen = () => {
+      console.log('Frontend: SSE connection opened');
+    };
     
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('Frontend: SSE message received:', data.type);
         
         if (data.type === 'update' && data.calls) {
+          console.log('Frontend: SSE update with', data.calls.length, 'calls');
           // Update calls list with new data
           setCalls(data.calls);
         } else if (data.type === 'connected') {
-          console.log('SSE connected');
+          console.log('Frontend: SSE connected');
         } else if (data.type === 'heartbeat') {
           // Heartbeat received, connection is alive
+          console.log('Frontend: SSE heartbeat');
         }
       } catch (err) {
-        console.error('Error parsing SSE message:', err);
+        console.error('Frontend: Error parsing SSE message:', err);
       }
     };
     
     eventSource.onerror = (err) => {
-      console.error('SSE error:', err);
+      console.error('Frontend: SSE error:', err);
+      console.error('Frontend: SSE readyState:', eventSource.readyState);
+      console.error('Frontend: EventSource.CONNECTING:', EventSource.CONNECTING);
+      console.error('Frontend: EventSource.OPEN:', EventSource.OPEN);
+      console.error('Frontend: EventSource.CLOSED:', EventSource.CLOSED);
       
       // Check if connection is closed (might be auth issue)
       if (eventSource.readyState === EventSource.CLOSED) {
+        console.error('Frontend: SSE connection closed, redirecting to login');
         // Connection closed, likely auth issue - redirect to obscure login URL
         eventSource.close();
         window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
@@ -97,6 +135,7 @@ export default function CallsPage() {
       // For other errors, try to reconnect after a delay
       setTimeout(() => {
         if (eventSource.readyState === EventSource.CLOSED) {
+          console.error('Frontend: SSE still closed after delay, redirecting to login');
           // Connection still closed, redirect to obscure login URL
           window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
         }

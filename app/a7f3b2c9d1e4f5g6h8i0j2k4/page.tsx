@@ -43,10 +43,16 @@ export default function LoginPage() {
         
         // Check if cookie was set by checking response headers
         const setCookieHeader = res.headers.get('set-cookie');
-        console.log('Login response - Set-Cookie header:', setCookieHeader);
+        console.log('Frontend Login: Set-Cookie header:', setCookieHeader);
+        
+        // Check all cookies in browser
+        console.log('Frontend Login: Document cookies:', document.cookie);
         
         // Wait a brief moment to ensure cookie is processed by browser
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Check cookies again after delay
+        console.log('Frontend Login: Document cookies after delay:', document.cookie);
         
         // Force a hard navigation to ensure cookies are set
         window.location.href = '/calls';
