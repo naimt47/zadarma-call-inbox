@@ -22,14 +22,30 @@ export async function verifyPassword(password: string): Promise<boolean> {
 }
 
 // Device token functions - these never expire (or expire very far in the future)
-export async function createDeviceToken(extension: string): Promise<string> {
+// If deviceId is provided, checks for existing token first and reuses it
+export async function createDeviceToken(extension: string, deviceId?: string): Promise<string> {
+  const dbPool = getPool();
+  
+  // If deviceId provided, check for existing valid token first
+  if (deviceId) {
+    const existingResult = await dbPool.query(
+      'SELECT device_token FROM device_tokens WHERE extension = $1 AND device_id = $2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [extension, deviceId]
+    );
+    
+    if (existingResult.rows.length > 0) {
+      // Reuse existing token
+      return existingResult.rows[0].device_token;
+    }
+  }
+  
+  // Create new token
   const deviceToken = generateDeviceToken();
   const expiresAt = new Date(Date.now() + DEVICE_TOKEN_DURATION_MS);
   
-  const dbPool = getPool();
   await dbPool.query(
-    'INSERT INTO device_tokens (device_token, extension, expires_at) VALUES ($1, $2, $3) ON CONFLICT (device_token) DO UPDATE SET expires_at = $3, extension = $2',
-    [deviceToken, extension, expiresAt]
+    'INSERT INTO device_tokens (device_token, extension, device_id, expires_at) VALUES ($1, $2, $3, $4) ON CONFLICT (device_token) DO UPDATE SET expires_at = $4, extension = $2, device_id = $3',
+    [deviceToken, extension, deviceId || null, expiresAt]
   );
   
   return deviceToken;

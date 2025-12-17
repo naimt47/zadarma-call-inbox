@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid or missing access token' }, { status: 401 });
     }
     
-    const { password, extension } = await req.json();
+    const { password, extension, deviceId } = await req.json();
     
     if (!password) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 });
@@ -25,8 +25,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
     
-    // Create device token (never expires, for persistent login)
-    const deviceToken = await createDeviceToken(extension.trim());
+    // Create or reuse device token (never expires, for persistent login)
+    // If deviceId is provided and token exists, it will be reused instead of creating new one
+    const deviceToken = await createDeviceToken(extension.trim(), deviceId);
     
     // Create response with device token in body (stored in localStorage)
     const response = NextResponse.json({ 

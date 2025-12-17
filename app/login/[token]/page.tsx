@@ -46,11 +46,19 @@ export default function LoginPage() {
       return;
     }
     
+    // Get or create device ID (stored in localStorage, never changes)
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+      // Generate a unique device ID (once per device, never changes)
+      deviceId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      localStorage.setItem('device_id', deviceId);
+    }
+    
     try {
       const res = await fetch(`/api/login?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, extension: extension.trim() }),
+        body: JSON.stringify({ password, extension: extension.trim(), deviceId }),
       });
       
       if (res.ok) {
