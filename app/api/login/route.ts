@@ -37,7 +37,6 @@ export async function POST(req: Request) {
     // Determine if we're on HTTPS (for secure flag)
     // In production (Vercel), always HTTPS, so secure should be true
     // In development, check the request URL
-    const url = new URL(req.url);
     const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
     
     // CRITICAL: Cookies MUST have both maxAge AND expires for proper persistence
