@@ -132,7 +132,6 @@ export async function validateAuth(req: Request): Promise<{ valid: boolean; toke
 export async function getSessionFromRequest(): Promise<string | null> {
   try {
     // Dynamic import for server components (cookies() must be called in async context)
-    // @ts-expect-error - next/headers is available in server components at runtime
     const { cookies } = await import('next/headers');
     const cookieStore = await cookies();
     return cookieStore.get(SESSION_COOKIE_NAME)?.value || null;
