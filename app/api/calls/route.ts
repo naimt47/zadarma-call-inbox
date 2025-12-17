@@ -15,8 +15,7 @@ export async function GET(req: Request) {
     // Query call_claims table
     // Filter: status IN ('missed', 'claimed') AND expires_at > NOW()
     // Sort: updated_at DESC
-    const result = await query(
-      `SELECT 
+    const queryText = `SELECT 
         phone_norm,
         last_pbx_call_id,
         status,
@@ -27,13 +26,38 @@ export async function GET(req: Request) {
       WHERE status IN ('missed', 'claimed')
         AND expires_at > NOW()
       ORDER BY updated_at DESC
-      LIMIT 100`
-    );
+      LIMIT 100`;
+    
+    console.log('Executing query:', queryText);
+    const result = await query(queryText);
+    console.log(`Query returned ${result.rows.length} rows`);
+    
+    if (result.rows.length === 0) {
+      // Check if table exists and has any data
+      const tableCheck = await query(
+        `SELECT COUNT(*) as total_count FROM call_claims`
+      );
+      console.log(`Total rows in call_claims table: ${tableCheck.rows[0]?.total_count || 0}`);
+      
+      const statusCheck = await query(
+        `SELECT status, COUNT(*) as count FROM call_claims GROUP BY status`
+      );
+      console.log('Status distribution:', statusCheck.rows);
+    }
     
     return NextResponse.json(result.rows);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching calls:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 

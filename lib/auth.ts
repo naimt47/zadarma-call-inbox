@@ -143,7 +143,7 @@ export async function getSessionFromRequest(): Promise<string | null> {
 /**
  * Cookie configuration for persistence
  * maxAge is in SECONDS (one year = 60 * 60 * 24 * 365)
- * expires is in milliseconds (Date.now() + milliseconds)
+ * expires should be calculated dynamically when setting the cookie
  */
 export const COOKIE_CONFIG = {
   name: SESSION_COOKIE_NAME,
@@ -153,7 +153,22 @@ export const COOKIE_CONFIG = {
   path: '/',
   // One year in seconds (not milliseconds)
   maxAge: 60 * 60 * 24 * 365,
-  // Explicit expiry date in milliseconds
-  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
   // domain: '.yourdomain.com' // Uncomment when using custom domain for cross-subdomain
 };
+
+/**
+ * Get cookie options with dynamically calculated expires date
+ * This ensures the expires date is always current when setting the cookie
+ */
+export function getCookieOptions() {
+  return {
+    httpOnly: COOKIE_CONFIG.httpOnly,
+    secure: COOKIE_CONFIG.secure,
+    sameSite: COOKIE_CONFIG.sameSite,
+    path: COOKIE_CONFIG.path,
+    maxAge: COOKIE_CONFIG.maxAge,
+    // Calculate expires date dynamically (one year from now)
+    expires: new Date(Date.now() + 1000 * COOKIE_CONFIG.maxAge),
+    // domain: COOKIE_CONFIG.domain, // Uncomment if needed for custom domain
+  };
+}

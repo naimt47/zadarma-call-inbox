@@ -22,11 +22,7 @@ export async function GET(req: Request) {
       // Poll database every 2 seconds and send updates
       const interval = setInterval(async () => {
         try {
-          let result;
-          
-          // Always get ALL calls (not just updates) to prevent disappearing
-          result = await query(
-            `SELECT 
+          const queryText = `SELECT 
               phone_norm,
               last_pbx_call_id,
               status,
@@ -37,8 +33,10 @@ export async function GET(req: Request) {
             WHERE status IN ('missed', 'claimed')
               AND expires_at > NOW()
             ORDER BY updated_at DESC
-            LIMIT 100`
-          );
+            LIMIT 100`;
+          
+          // Always get ALL calls (not just updates) to prevent disappearing
+          const result = await query(queryText);
           
           // Always send full list to prevent calls from disappearing
           controller.enqueue(
@@ -50,8 +48,13 @@ export async function GET(req: Request) {
           if (heartbeatCount % 5 === 0) { // Every 10 seconds (5 * 2 seconds)
             controller.enqueue(encoder.encode('data: {"type":"heartbeat"}\n\n'));
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('SSE stream error:', error);
+          console.error('SSE error details:', {
+            message: error.message,
+            code: error.code,
+            detail: error.detail
+          });
           // Don't close on error, just log it
         }
       }, 2000); // Check every 2 seconds
