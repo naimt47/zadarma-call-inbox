@@ -17,7 +17,6 @@ export async function GET(req: Request) {
       // Send initial connection message
       controller.enqueue(encoder.encode('data: {"type":"connected"}\n\n'));
       
-      let lastUpdateTime: Date | null = null;
       let heartbeatCount = 0;
       
       // Poll database every 2 seconds and send updates
@@ -25,56 +24,31 @@ export async function GET(req: Request) {
         try {
           let result;
           
-          if (lastUpdateTime === null) {
-            // First poll: get all calls
-            result = await query(
-              `SELECT 
-                phone_norm,
-                last_pbx_call_id,
-                status,
-                handled_by_ext,
-                updated_at,
-                expires_at
-              FROM call_claims
-              WHERE status IN ('missed', 'claimed')
-                AND expires_at > NOW()
-              ORDER BY updated_at DESC
-              LIMIT 100`
-            );
-          } else {
-            // Subsequent polls: get only updated calls
-            result = await query(
-              `SELECT 
-                phone_norm,
-                last_pbx_call_id,
-                status,
-                handled_by_ext,
-                updated_at,
-                expires_at
-              FROM call_claims
-              WHERE status IN ('missed', 'claimed')
-                AND expires_at > NOW()
-                AND updated_at > $1
-              ORDER BY updated_at DESC
-              LIMIT 100`,
-              [lastUpdateTime]
-            );
-          }
+          // Always get ALL calls (not just updates) to prevent disappearing
+          result = await query(
+            `SELECT 
+              phone_norm,
+              last_pbx_call_id,
+              status,
+              handled_by_ext,
+              updated_at,
+              expires_at
+            FROM call_claims
+            WHERE status IN ('missed', 'claimed')
+              AND expires_at > NOW()
+            ORDER BY updated_at DESC
+            LIMIT 100`
+          );
           
-          // Update last check time
-          lastUpdateTime = new Date();
+          // Always send full list to prevent calls from disappearing
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'update', calls: result.rows })}\n\n`)
+          );
           
-          // Send updates if there are any
-          if (result.rows.length > 0) {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: 'update', calls: result.rows })}\n\n`)
-            );
-          } else {
-            // Send heartbeat every 10 seconds to keep connection alive
-            heartbeatCount++;
-            if (heartbeatCount % 5 === 0) { // Every 10 seconds (5 * 2 seconds)
-              controller.enqueue(encoder.encode('data: {"type":"heartbeat"}\n\n'));
-            }
+          // Send heartbeat every 10 seconds to keep connection alive
+          heartbeatCount++;
+          if (heartbeatCount % 5 === 0) { // Every 10 seconds (5 * 2 seconds)
+            controller.enqueue(encoder.encode('data: {"type":"heartbeat"}\n\n'));
           }
         } catch (error) {
           console.error('SSE stream error:', error);

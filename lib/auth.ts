@@ -104,6 +104,8 @@ export async function setSessionCookie(token: string): Promise<void> {
     sameSite: 'lax',
     maxAge: SESSION_DURATION_MS / 1000,
     path: '/',
+    // Ensure cookie persists across browser sessions
+    expires: new Date(Date.now() + SESSION_DURATION_MS),
   });
 }
 
