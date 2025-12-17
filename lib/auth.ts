@@ -152,7 +152,11 @@ export async function validateAuth(req: Request): Promise<{ valid: boolean; toke
       const cookies = cookieHeader.split(';').map(c => c.trim());
       const sessionCookie = cookies.find(c => c.startsWith(`${SESSION_COOKIE_NAME}=`));
       if (sessionCookie) {
-        sessionToken = sessionCookie.split('=')[1];
+        // Properly extract value after the = sign (handles cases where value might contain =)
+        const equalIndex = sessionCookie.indexOf('=');
+        if (equalIndex !== -1) {
+          sessionToken = sessionCookie.substring(equalIndex + 1);
+        }
       }
     }
     

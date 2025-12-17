@@ -13,7 +13,6 @@ export async function middleware(request: NextRequest) {
   // Allow public assets
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/validate-login-token') ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/static')
   ) {
