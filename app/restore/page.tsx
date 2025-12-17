@@ -23,8 +23,8 @@ export default function RestorePage() {
             });
 
             if (res.ok) {
-              // Cookie restored, redirect to calls
-              router.push('/calls');
+              // Cookie restored, force full page reload to ensure cookie is sent
+              window.location.href = '/calls';
               return;
             }
           } catch (err) {
