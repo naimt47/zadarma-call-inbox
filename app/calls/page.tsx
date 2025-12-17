@@ -40,7 +40,14 @@ export default function CallsPage() {
   useEffect(() => {
     async function fetchCalls() {
       try {
-        const res = await fetch('/api/calls');
+        const res = await fetch('/api/calls', {
+          credentials: 'include',
+        });
+        if (res.status === 401) {
+          // Session expired or invalid, redirect to restore
+          window.location.href = '/restore';
+          return;
+        }
         if (!res.ok) {
           throw new Error('Failed to fetch calls');
         }
@@ -79,7 +86,34 @@ export default function CallsPage() {
     
     eventSource.onerror = (err) => {
       console.error('SSE error:', err);
-      // Reconnect after 3 seconds
+      // Check if it's an authentication error (401)
+      // EventSource doesn't expose status, but we can check the readyState
+      if (eventSource.readyState === EventSource.CLOSED) {
+        // Connection closed, might be auth issue - try to restore session
+        const backupToken = localStorage.getItem('session_token_backup');
+        if (backupToken) {
+          // Try to restore session
+          fetch('/api/restore-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionToken: backupToken }),
+            credentials: 'include',
+          }).then(res => {
+            if (res.ok) {
+              // Reload page to reconnect
+              window.location.reload();
+            } else {
+              // No valid session, redirect to restore
+              window.location.href = '/restore';
+            }
+          });
+        } else {
+          // No backup token, redirect to restore
+          window.location.href = '/restore';
+        }
+        return;
+      }
+      // Reconnect after 3 seconds for other errors
       setTimeout(() => {
         eventSource.close();
         // The useEffect will re-run and create a new connection
@@ -103,6 +137,7 @@ export default function CallsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'claimed', extension: extension.trim() }),
+        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -130,6 +165,7 @@ export default function CallsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'handled', extension: extension.trim() }),
+        credentials: 'include',
       });
       
       if (!res.ok) {

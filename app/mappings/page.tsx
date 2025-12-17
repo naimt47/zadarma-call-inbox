@@ -30,7 +30,14 @@ export default function MappingsPage() {
   // Fetch mappings
   const fetchMappings = async () => {
     try {
-      const res = await fetch('/api/mappings');
+      const res = await fetch('/api/mappings', {
+        credentials: 'include',
+      });
+      if (res.status === 401) {
+        // Session expired or invalid, redirect to restore
+        window.location.href = '/restore';
+        return;
+      }
       if (!res.ok) {
         throw new Error('Failed to fetch mappings');
       }
@@ -60,6 +67,7 @@ export default function MappingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
+        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -99,6 +107,7 @@ export default function MappingsPage() {
           extension: editingData.extension,
           expires_at: editingData.expires_at,
         }),
+        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -123,6 +132,7 @@ export default function MappingsPage() {
     try {
       const res = await fetch(`/api/mappings/${encodeURIComponent(phoneNumber)}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       if (!res.ok) {
