@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { validateSession } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -19,7 +18,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Check session for all other routes
+  // Check if session cookie exists (lightweight check for Edge Runtime)
+  // Full validation happens in server components and API routes
   const sessionToken = request.cookies.get('call_inbox_session')?.value;
   
   if (!sessionToken) {
@@ -28,19 +28,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
   
-  // Validate session
-  const isValid = await validateSession(sessionToken);
-  
-  if (!isValid) {
-    // Invalid session, redirect to login
-    const loginUrl = new URL('/login', request.url);
-    // Clear invalid cookie
-    const response = NextResponse.redirect(loginUrl);
-    response.cookies.delete('call_inbox_session');
-    return response;
-  }
-  
-  // Valid session, allow access
+  // Cookie exists, allow through
+  // Full validation will happen in the server component/API route (Node.js runtime)
   return NextResponse.next();
 }
 

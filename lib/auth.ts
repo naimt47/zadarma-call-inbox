@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { query } from './db';
 
@@ -6,17 +5,20 @@ const SESSION_COOKIE_NAME = 'call_inbox_session';
 const SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 365 days - login once and stay logged in
 
 /**
- * Generate a secure random session token
+ * Generate a secure random session token using Web Crypto API (works in Edge Runtime)
  */
-export function generateSessionToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+export async function generateSessionToken(): Promise<string> {
+  // Use Web Crypto API which works in both Node.js and Edge Runtime
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**
  * Create a new session in the database and return the token
  */
 export async function createSession(): Promise<string> {
-  const token = generateSessionToken();
+  const token = await generateSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   
   try {
