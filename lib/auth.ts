@@ -1,130 +1,170 @@
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
-import { getPool } from './db';
+import { query } from './db';
 
-const DEVICE_TOKEN_HEADER = 'x-device-token';
-const DEVICE_TOKEN_DURATION_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years (effectively permanent)
+const SESSION_COOKIE_NAME = 'call_inbox_session';
+const SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 365 days - login once and stay logged in
 
-export function generateDeviceToken(): string {
+/**
+ * Generate a secure random session token
+ */
+export function generateSessionToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+/**
+ * Create a new session in the database and return the token
+ */
+export async function createSession(): Promise<string> {
+  const token = generateSessionToken();
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  
+  try {
+    await query(
+      'INSERT INTO user_sessions (session_token, expires_at) VALUES ($1, $2)',
+      [token, expiresAt]
+    );
+  } catch (error: any) {
+    // If table doesn't exist, create it
+    if (error.code === '42P01') {
+      await query(`
+        CREATE TABLE IF NOT EXISTS user_sessions (
+          session_token TEXT PRIMARY KEY,
+          expires_at TIMESTAMPTZ NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      await query(
+        'CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions (expires_at)'
+      );
+      // Retry insert
+      await query(
+        'INSERT INTO user_sessions (session_token, expires_at) VALUES ($1, $2)',
+        [token, expiresAt]
+      );
+    } else {
+      throw error;
+    }
+  }
+  
+  return token;
+}
+
+/**
+ * Validate a session token from the database
+ */
+export async function validateSession(token: string | null): Promise<boolean> {
+  if (!token) return false;
+  
+  try {
+    const result = await query(
+      'SELECT expires_at FROM user_sessions WHERE session_token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      // Cleanup expired session
+      await query('DELETE FROM user_sessions WHERE session_token = $1', [token]);
+      return false;
+    }
+    
+    return true;
+  } catch (error: any) {
+    // If table doesn't exist, return false
+    if (error.code === '42P01') {
+      return false;
+    }
+    console.error('Error validating session:', error);
+    return false;
+  }
+}
+
+/**
+ * Get session token from request cookies
+ */
+export async function getSessionFromRequest(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    return cookieStore.get(SESSION_COOKIE_NAME)?.value || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Set session cookie in the response
+ */
+export async function setSessionCookie(token: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: SESSION_DURATION_MS / 1000,
+    path: '/',
+  });
+}
+
+/**
+ * Delete session from database and clear cookie
+ */
+export async function deleteSession(token: string | null): Promise<void> {
+  if (!token) return;
+  
+  try {
+    await query('DELETE FROM user_sessions WHERE session_token = $1', [token]);
+  } catch (error) {
+    console.error('Error deleting session:', error);
+  }
+  
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete(SESSION_COOKIE_NAME);
+  } catch (error) {
+    // Ignore cookie deletion errors
+  }
+}
+
+/**
+ * Verify password against environment variable
+ */
 export async function verifyPassword(password: string): Promise<boolean> {
   const correctPassword = process.env.CALL_INBOX_PASSWORD;
-  if (!correctPassword) return false;
-  
-  // Simple comparison (or use bcrypt for hashed passwords)
-  return password === correctPassword;
-  
-  // Or with bcrypt:
-  // const bcrypt = require('bcryptjs');
-  // return await bcrypt.compare(password, correctPassword);
-}
-
-// Device token functions - these never expire (or expire very far in the future)
-// If deviceId is provided, checks for existing token first and reuses it
-export async function createDeviceToken(extension: string, deviceId?: string): Promise<string> {
-  const dbPool = getPool();
-  
-  // If deviceId provided, check for existing valid token first
-  if (deviceId) {
-    const existingResult = await dbPool.query(
-      'SELECT device_token FROM device_tokens WHERE extension = $1 AND device_id = $2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
-      [extension, deviceId]
-    );
-    
-    if (existingResult.rows.length > 0) {
-      // Reuse existing token
-      return existingResult.rows[0].device_token;
-    }
-  }
-  
-  // Create new token
-  const deviceToken = generateDeviceToken();
-  const expiresAt = new Date(Date.now() + DEVICE_TOKEN_DURATION_MS);
-  
-  await dbPool.query(
-    'INSERT INTO device_tokens (device_token, extension, device_id, expires_at) VALUES ($1, $2, $3, $4) ON CONFLICT (device_token) DO UPDATE SET expires_at = $4, extension = $2, device_id = $3',
-    [deviceToken, extension, deviceId || null, expiresAt]
-  );
-  
-  return deviceToken;
-}
-
-export async function validateDeviceToken(deviceToken: string | null): Promise<{ valid: boolean; extension?: string }> {
-  if (!deviceToken) {
-    return { valid: false };
-  }
-  
-  try {
-    const dbPool = getPool();
-    const result = await dbPool.query(
-      'SELECT extension FROM device_tokens WHERE device_token = $1 AND expires_at > NOW()',
-      [deviceToken]
-    );
-    
-    if (result.rows.length > 0) {
-      return { valid: true, extension: result.rows[0].extension };
-    }
-    
-    return { valid: false };
-  } catch (error) {
-    console.error('validateDeviceToken error:', error);
-    return { valid: false };
-  }
-}
-
-export function getDeviceTokenFromRequest(req: Request): string | null {
-  // Check header first (preferred method)
-  const headerToken = req.headers.get(DEVICE_TOKEN_HEADER);
-  if (headerToken) {
-    return headerToken;
-  }
-  
-  // Check query param (for SSE which doesn't support custom headers)
-  try {
-    const url = new URL(req.url);
-    const queryToken = url.searchParams.get('device_token');
-    if (queryToken) {
-      return queryToken;
-    }
-  } catch (e) {
-    // URL parsing failed, continue
-  }
-  
-  // Fall back to cookie (for compatibility)
-  // Note: We can't use cookies() here in all contexts, so we'll parse from headers
-  const cookieHeader = req.headers.get('cookie');
-  if (cookieHeader) {
-    const match = cookieHeader.match(/device_token=([^;]+)/);
-    if (match) {
-      return match[1];
-    }
-  }
-  
-  return null;
-}
-
-// Combined validation - only checks device token
-export async function validateAuth(req: Request): Promise<{ valid: boolean; extension?: string }> {
-  const deviceToken = getDeviceTokenFromRequest(req);
-  if (deviceToken) {
-    const deviceValidation = await validateDeviceToken(deviceToken);
-    if (deviceValidation.valid) {
-      return { valid: true, extension: deviceValidation.extension };
-    }
-  }
-  
-  return { valid: false };
-}
-
-// Login page token validation
-export function validateLoginToken(token: string | null): boolean {
-  const validToken = process.env.LOGIN_ACCESS_TOKEN;
-  if (!validToken) {
-    console.error('LOGIN_ACCESS_TOKEN not set in environment variables');
+  if (!correctPassword) {
+    console.error('CALL_INBOX_PASSWORD environment variable is not set');
     return false;
   }
   
-  return token === validToken;
+  return password === correctPassword;
 }
+
+/**
+ * Validate authentication from request (for API routes)
+ * Returns object with valid flag and session token
+ */
+export async function validateAuth(req: Request): Promise<{ valid: boolean; token: string | null }> {
+  try {
+    // Get session from cookie
+    const cookieHeader = req.headers.get('cookie');
+    let sessionToken: string | null = null;
+    
+    if (cookieHeader) {
+      const cookies = cookieHeader.split(';').map(c => c.trim());
+      const sessionCookie = cookies.find(c => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+      if (sessionCookie) {
+        sessionToken = sessionCookie.split('=')[1];
+      }
+    }
+    
+    if (!sessionToken) {
+      return { valid: false, token: null };
+    }
+    
+    const isValid = await validateSession(sessionToken);
+    return { valid: isValid, token: isValid ? sessionToken : null };
+  } catch (error) {
+    console.error('Error validating auth:', error);
+    return { valid: false, token: null };
+  }
+}
+

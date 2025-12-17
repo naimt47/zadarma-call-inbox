@@ -20,17 +20,9 @@ export default function CallsPage() {
   const [extension, setExtension] = useState('');
   const [claiming, setClaiming] = useState<string | null>(null);
   
-  // Load extension from cookie or localStorage
+  // Load extension from localStorage
   useEffect(() => {
-    function getCookie(name: string) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(';').shift();
-      return null;
-    }
-    
-    // Load extension
-    const savedExtension = getCookie('user_extension') || localStorage.getItem('userExtension');
+    const savedExtension = localStorage.getItem('userExtension');
     if (savedExtension) {
       setExtension(savedExtension);
     }
@@ -40,27 +32,23 @@ export default function CallsPage() {
   useEffect(() => {
     async function fetchCalls() {
       try {
-        // Get device token from localStorage
-        const deviceToken = localStorage.getItem('device_token');
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        if (deviceToken) {
-          headers['x-device-token'] = deviceToken;
-        }
-        
         const res = await fetch('/api/calls', {
           credentials: 'include',
-          headers,
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
+        
         if (res.status === 401) {
-          // Session expired or invalid, redirect to restore
-          window.location.href = '/restore';
+          // Session expired or invalid, redirect to login
+          window.location.href = '/login';
           return;
         }
+        
         if (!res.ok) {
           throw new Error('Failed to fetch calls');
         }
+        
         const data = await res.json();
         setCalls(data);
         setLoading(false);
@@ -75,12 +63,8 @@ export default function CallsPage() {
   
   // Set up SSE connection for real-time updates
   useEffect(() => {
-    // EventSource doesn't support custom headers, so we'll use query param for device token
-    const deviceToken = localStorage.getItem('device_token');
-    const streamUrl = deviceToken 
-      ? `/api/calls/stream?device_token=${encodeURIComponent(deviceToken)}`
-      : '/api/calls/stream';
-    const eventSource = new EventSource(streamUrl);
+    // EventSource automatically sends cookies (including session cookie)
+    const eventSource = new EventSource('/api/calls/stream');
     
     eventSource.onmessage = (event) => {
       try {
@@ -101,37 +85,21 @@ export default function CallsPage() {
     
     eventSource.onerror = (err) => {
       console.error('SSE error:', err);
-      // Check if it's an authentication error (401)
-      // EventSource doesn't expose status, but we can check the readyState
+      
+      // Check if connection is closed (might be auth issue)
       if (eventSource.readyState === EventSource.CLOSED) {
-        // Connection closed, might be auth issue - try to restore device token
-        const deviceToken = localStorage.getItem('device_token');
-        if (deviceToken) {
-          // Try to restore device token
-          fetch('/api/restore-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ deviceToken }),
-            credentials: 'include',
-          }).then(res => {
-            if (res.ok) {
-              // Reload page to reconnect
-              window.location.reload();
-            } else {
-              // No valid device token, redirect to restore
-              window.location.href = '/restore';
-            }
-          });
-        } else {
-          // No device token, redirect to restore
-          window.location.href = '/restore';
-        }
+        // Connection closed, likely auth issue - redirect to login
+        eventSource.close();
+        window.location.href = '/login';
         return;
       }
-      // Reconnect after 3 seconds for other errors
+      
+      // For other errors, try to reconnect after a delay
       setTimeout(() => {
-        eventSource.close();
-        // The useEffect will re-run and create a new connection
+        if (eventSource.readyState === EventSource.CLOSED) {
+          // Connection still closed, redirect to login
+          window.location.href = '/login';
+        }
       }, 3000);
     };
     
@@ -148,17 +116,11 @@ export default function CallsPage() {
     
     setClaiming(phoneNorm);
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch(`/api/calls/${encodeURIComponent(phoneNorm)}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: 'claimed', extension: extension.trim() }),
         credentials: 'include',
       });
@@ -184,17 +146,11 @@ export default function CallsPage() {
     
     setClaiming(phoneNorm);
     try {
-      const deviceToken = localStorage.getItem('device_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (deviceToken) {
-        headers['x-device-token'] = deviceToken;
-      }
-      
       const res = await fetch(`/api/calls/${encodeURIComponent(phoneNorm)}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: 'handled', extension: extension.trim() }),
         credentials: 'include',
       });
@@ -259,11 +215,28 @@ export default function CallsPage() {
       </div>
       
       <div className="px-4 py-3">
-        {extension && (
-          <div className="mb-3 text-sm text-gray-600">
-            Extension: <span className="font-semibold">{extension}</span>
-          </div>
-        )}
+        <div className="mb-4 bg-white rounded-lg shadow p-4">
+          <label htmlFor="extension" className="block text-sm font-medium text-gray-700 mb-2">
+            Your Extension
+          </label>
+          <input
+            id="extension"
+            type="text"
+            value={extension}
+            onChange={(e) => {
+              const value = e.target.value;
+              setExtension(value);
+              // Save to localStorage
+              if (value.trim()) {
+                localStorage.setItem('userExtension', value.trim());
+              } else {
+                localStorage.removeItem('userExtension');
+              }
+            }}
+            placeholder="Enter your extension"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
         
         {calls.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">

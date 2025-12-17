@@ -1,6 +1,16 @@
 import { redirect } from 'next/navigation';
+import { getSessionFromRequest, validateSession } from '@/lib/auth';
 
-export default function Home() {
-  // Redirect to 404 - don't expose login URL
-  redirect('/404');
+export default async function Home() {
+  // Check if user is logged in
+  const sessionToken = await getSessionFromRequest();
+  const isValid = await validateSession(sessionToken);
+  
+  if (isValid) {
+    // User is logged in, redirect to calls
+    redirect('/calls');
+  } else {
+    // User is not logged in, redirect to login
+    redirect('/login');
+  }
 }
