@@ -48,22 +48,28 @@ export async function getSessionFromRequest(): Promise<string | null> {
 
 export async function setSessionCookie(token: string): Promise<void> {
   const cookieStore = await cookies();
+  const expires = new Date(Date.now() + SESSION_DURATION_MS);
+  
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: SESSION_DURATION_MS / 1000,
+    expires: expires,
     path: '/',
   });
 }
 
 export async function setExtensionCookie(extension: string): Promise<void> {
   const cookieStore = await cookies();
+  const expires = new Date(Date.now() + SESSION_DURATION_MS);
+  
   cookieStore.set('user_extension', extension, {
     httpOnly: false, // Allow client-side access
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: SESSION_DURATION_MS / 1000,
+    expires: expires,
     path: '/',
   });
 }
