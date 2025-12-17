@@ -16,18 +16,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Check session cookie for protected routes
+  // Check device token cookie for protected routes
   if (
     request.nextUrl.pathname.startsWith('/calls') || 
     request.nextUrl.pathname.startsWith('/api/calls') ||
     request.nextUrl.pathname.startsWith('/mappings') ||
     request.nextUrl.pathname.startsWith('/api/mappings')
   ) {
-    const sessionToken = request.cookies.get('call_inbox_session')?.value;
+    const deviceToken = request.cookies.get('device_token')?.value;
     
     // Basic check - full validation with DB happens in API routes
-    // If no cookie, redirect to restore page (which will check localStorage)
-    if (!sessionToken) {
+    // If no cookie, redirect to restore page (which will check localStorage and set cookie)
+    if (!deviceToken) {
       return NextResponse.redirect(new URL('/restore', request.url));
     }
   }

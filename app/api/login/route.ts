@@ -35,8 +35,17 @@ export async function POST(req: Request) {
       deviceToken: deviceToken, // Never expires, stored in localStorage
     });
     
-    // Set extension cookie (for convenience, not for auth)
+    // Set device token as cookie (so middleware can read it)
     const isHttps = url.protocol === 'https:' || process.env.NODE_ENV === 'production';
+    response.cookies.set('device_token', deviceToken, {
+      httpOnly: false, // Allow client-side access for localStorage backup
+      secure: isHttps,
+      sameSite: 'lax' as const,
+      maxAge: 10 * 365 * 24 * 60 * 60, // 10 years
+      path: '/',
+    });
+    
+    // Set extension cookie (for convenience, not for auth)
     response.cookies.set('user_extension', extension.trim(), {
       httpOnly: false, // Allow client-side access
       secure: isHttps,
