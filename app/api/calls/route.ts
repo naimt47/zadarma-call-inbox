@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const filterExtension = url.searchParams.get('extension') || '';
     const includeExpired = url.searchParams.get('includeExpired') === 'true';
     const includeHandled = url.searchParams.get('includeHandled') === 'true';
-    const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '20', 10); // Default to 20 calls
     
     // Build WHERE clause
     const conditions: string[] = [];
@@ -33,8 +33,11 @@ export async function GET(req: Request) {
       conditions.push(`status IN ('missed', 'claimed')`);
     }
     
-    // Expiration filter
-    if (!includeExpired) {
+    // Expiration filter - only apply if explicitly requested to exclude expired
+    // By default, show all calls regardless of expiration (user wants to see recent calls)
+    // This allows viewing calls even after they "expire"
+    if (!includeExpired && url.searchParams.has('includeExpired')) {
+      // Only filter if includeExpired was explicitly set to false
       conditions.push(`expires_at > NOW()`);
     }
     

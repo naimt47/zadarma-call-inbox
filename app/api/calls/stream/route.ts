@@ -36,8 +36,9 @@ export async function GET(req: Request) {
           }
           
           // Query call_claims table
-          // Filter: status IN ('missed', 'claimed') AND expires_at > NOW()
+          // Filter: status IN ('missed', 'claimed') - removed expiration filter to show recent calls
           // Sort: updated_at DESC (uses index idx_call_claims_updated_at)
+          // Show last 20 calls by default, regardless of expiration
           const result = await query(
             `SELECT 
               phone_norm,
@@ -48,9 +49,8 @@ export async function GET(req: Request) {
               expires_at
             FROM call_claims
             WHERE status IN ('missed', 'claimed')
-              AND expires_at > NOW()
             ORDER BY updated_at DESC
-            LIMIT 100`
+            LIMIT 20`
           );
           
           // Check again before sending (client might have disconnected)

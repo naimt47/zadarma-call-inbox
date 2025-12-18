@@ -56,7 +56,8 @@ export default function CallsPage() {
           return;
         }
         
-        const res = await fetch('/api/calls', {
+        // Fetch last 20 calls by default, regardless of expiration
+        const res = await fetch('/api/calls?limit=20', {
           headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders(),
