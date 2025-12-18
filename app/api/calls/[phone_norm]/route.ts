@@ -22,7 +22,7 @@ export async function PATCH(
     const { status, extension } = body;
     
     // Validate status
-    const validStatuses = ['claimed', 'handled'];
+    const validStatuses = ['claimed', 'handled', 'archived'];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Status must be one of: ${validStatuses.join(', ')}` },
@@ -30,10 +30,23 @@ export async function PATCH(
       );
     }
     
-    // Validate extension
+    // Map 'archived' to 'handled' for database compatibility
+    const dbStatus = status === 'archived' ? 'handled' : status;
+    
+    // Validate extension (allow 'system' for archive operations)
     if (!extension || typeof extension !== 'string') {
       return NextResponse.json(
         { error: 'Extension is required' },
+        { status: 400 }
+      );
+    }
+    
+    // For archived status, extension can be 'system'
+    if (status === 'archived' && extension === 'system') {
+      // Allow system archiving
+    } else if (status === 'archived') {
+      return NextResponse.json(
+        { error: 'Only system can archive calls' },
         { status: 400 }
       );
     }
@@ -59,7 +72,7 @@ export async function PATCH(
            updated_at = NOW()
        WHERE phone_norm = $3
        RETURNING phone_norm, status, handled_by_ext, updated_at, expires_at`,
-      [status, extension, phoneNorm]
+      [dbStatus, extension, phoneNorm]
     );
     
     if (updateResult.rows.length === 0) {
@@ -72,7 +85,7 @@ export async function PATCH(
     if (statusChanged) {
       await sendCallStatusNotification({
         phone: phoneNorm,
-        status: status as 'claimed' | 'handled',
+        status: (status === 'archived' ? 'handled' : status) as 'claimed' | 'handled',
         extension: extension,
       });
     }

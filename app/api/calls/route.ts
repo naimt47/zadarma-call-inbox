@@ -10,9 +10,57 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get query parameters
+    const url = new URL(req.url);
+    const searchPhone = url.searchParams.get('search') || '';
+    const filterStatus = url.searchParams.get('status') || '';
+    const filterExtension = url.searchParams.get('extension') || '';
+    const includeExpired = url.searchParams.get('includeExpired') === 'true';
+    const includeHandled = url.searchParams.get('includeHandled') === 'true';
+    const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+    
+    // Build WHERE clause
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+    
+    // Status filter
+    if (filterStatus) {
+      conditions.push(`status = $${paramIndex++}`);
+      params.push(filterStatus);
+    } else if (!includeHandled) {
+      // Default: only show missed and claimed (not handled)
+      conditions.push(`status IN ('missed', 'claimed')`);
+    }
+    
+    // Expiration filter
+    if (!includeExpired) {
+      conditions.push(`expires_at > NOW()`);
+    }
+    
+    // Phone number search
+    if (searchPhone) {
+      const normalizedSearch = searchPhone.replace(/\D/g, ''); // Remove non-digits
+      if (normalizedSearch) {
+        conditions.push(`phone_norm LIKE $${paramIndex++}`);
+        params.push(`%${normalizedSearch}%`);
+      }
+    }
+    
+    // Extension filter
+    if (filterExtension) {
+      conditions.push(`handled_by_ext = $${paramIndex++}`);
+      params.push(filterExtension);
+    }
+    
+    const whereClause = conditions.length > 0 
+      ? `WHERE ${conditions.join(' AND ')}`
+      : '';
+    
+    // Add limit to params
+    params.push(limit);
+    
     // Query call_claims table
-    // Filter: status IN ('missed', 'claimed') AND expires_at > NOW()
-    // Sort: updated_at DESC (uses index idx_call_claims_updated_at)
     const result = await query(
       `SELECT 
         phone_norm,
@@ -22,10 +70,10 @@ export async function GET(req: Request) {
         updated_at,
         expires_at
       FROM call_claims
-      WHERE status IN ('missed', 'claimed')
-        AND expires_at > NOW()
+      ${whereClause}
       ORDER BY updated_at DESC
-      LIMIT 100`
+      LIMIT $${paramIndex}`,
+      params
     );
     
     return NextResponse.json(result.rows);

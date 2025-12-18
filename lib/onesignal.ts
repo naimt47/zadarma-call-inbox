@@ -20,8 +20,8 @@ function getOneSignalClient(): OneSignal.Client | null {
 
 export interface NotificationData {
   phone: string;
-  status: 'claimed' | 'handled';
-  extension: string;
+  status: 'missed' | 'claimed' | 'handled';
+  extension?: string;
 }
 
 export async function sendCallStatusNotification(data: NotificationData): Promise<void> {
@@ -33,18 +33,34 @@ export async function sendCallStatusNotification(data: NotificationData): Promis
   }
   
   try {
-    const message = `Call from ${data.phone} was ${data.status} by ${data.extension}`;
+    let message: string;
+    let title: string;
+    
+    if (data.status === 'missed') {
+      title = 'New Missed Call';
+      message = `Call from ${data.phone}`;
+    } else {
+      title = 'Call Updated';
+      message = `Call from ${data.phone} was ${data.status} by ${data.extension || 'unknown'}`;
+    }
     
     const notification = {
       contents: {
         en: message,
       },
+      headings: {
+        en: title,
+      },
       // Send to all subscribers (all 3 partners)
       included_segments: ['All'],
+      // Add URL to open the app
+      url: process.env.NEXT_PUBLIC_APP_URL || 'https://your-app-url.vercel.app/calls',
+      // Priority for missed calls
+      priority: data.status === 'missed' ? 10 : 5,
     };
     
     await oneSignalClient.createNotification(notification);
-    console.log('OneSignal notification sent:', message);
+    console.log('OneSignal notification sent:', title, message);
   } catch (error) {
     console.error('Failed to send OneSignal notification:', error);
     // Don't throw - notifications are non-critical

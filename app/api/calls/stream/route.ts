@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
   
-  const isValid = await verifyPassword(password);
+  const isValid = verifyPassword(password);
   if (!isValid) {
     return new Response('Unauthorized', { status: 401 });
   }
@@ -28,6 +28,13 @@ export async function GET(req: Request) {
       // Poll database every 2 seconds and send updates
       const interval = setInterval(async () => {
         try {
+          // Check if request was aborted
+          if (req.signal?.aborted) {
+            clearInterval(interval);
+            controller.close();
+            return;
+          }
+          
           // Query call_claims table
           // Filter: status IN ('missed', 'claimed') AND expires_at > NOW()
           // Sort: updated_at DESC (uses index idx_call_claims_updated_at)
@@ -46,6 +53,13 @@ export async function GET(req: Request) {
             LIMIT 100`
           );
           
+          // Check again before sending (client might have disconnected)
+          if (req.signal?.aborted) {
+            clearInterval(interval);
+            controller.close();
+            return;
+          }
+          
           // Always send full list to prevent calls from disappearing
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'update', calls: result.rows })}\n\n`)
@@ -58,15 +72,26 @@ export async function GET(req: Request) {
           }
         } catch (error: any) {
           console.error('SSE stream error:', error);
-          // Don't close on error, just log it
+          // If controller is closed or request aborted, clean up
+          if (req.signal?.aborted || error.name === 'AbortError') {
+            clearInterval(interval);
+            controller.close();
+            return;
+          }
         }
       }, 2000); // Check every 2 seconds
       
-      // Cleanup on close
-      req.signal.addEventListener('abort', () => {
-        clearInterval(interval);
-        controller.close();
-      });
+      // Cleanup on close - handle abort signal properly
+      if (req.signal) {
+        req.signal.addEventListener('abort', () => {
+          clearInterval(interval);
+          try {
+            controller.close();
+          } catch (e) {
+            // Controller might already be closed
+          }
+        });
+      }
     },
   });
   
