@@ -54,7 +54,7 @@ export async function sendCallStatusNotification(data: NotificationData): Promis
       // Send to all subscribers (all 3 partners)
       included_segments: ['All'],
       // Add URL to open the app
-      url: process.env.NEXT_PUBLIC_APP_URL || 'https://your-app-url.vercel.app/calls',
+      url: process.env.NEXT_PUBLIC_APP_URL || 'https://calls.nva.global/calls',
       // Priority for missed calls
       priority: data.status === 'missed' ? 10 : 5,
     };
