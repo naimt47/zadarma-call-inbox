@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     }
     
     const body = await req.json();
-    const { phone, status = 'missed' } = body;
+    const { phone, status = 'missed', extension } = body;
     
     if (!phone) {
       return NextResponse.json(
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     await sendCallStatusNotification({
       phone: phoneNorm,
       status: status as 'missed' | 'claimed' | 'handled',
+      extension: extension,
     });
     
     return NextResponse.json({ 

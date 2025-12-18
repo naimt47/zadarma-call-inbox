@@ -30,7 +30,7 @@ function getOneSignalClient(): OneSignal.Client | null {
 
 export interface NotificationData {
   phone: string;
-  status: 'missed' | 'claimed' | 'handled';
+  status: 'missed' | 'claimed' | 'handled' | 'callback_started' | 'callback_done';
   extension?: string;
 }
 
@@ -49,6 +49,12 @@ export async function sendCallStatusNotification(data: NotificationData): Promis
     if (data.status === 'missed') {
       title = 'New Missed Call';
       message = `Call from ${data.phone}`;
+    } else if (data.status === 'claimed' || data.status === 'callback_started') {
+      title = 'Callback Started';
+      message = `Calling back ${data.phone} (ext ${data.extension || 'unknown'})`;
+    } else if (data.status === 'handled' || data.status === 'callback_done') {
+      title = 'Callback Completed';
+      message = `Callback to ${data.phone} completed by ${data.extension || 'unknown'}`;
     } else {
       title = 'Call Updated';
       message = `Call from ${data.phone} was ${data.status} by ${data.extension || 'unknown'}`;

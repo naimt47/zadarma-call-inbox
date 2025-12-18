@@ -65,20 +65,71 @@ DO UPDATE SET
   expires_at = NOW() + INTERVAL '1 hour';
 ```
 
+## Testing Status Change Notifications
 
+When someone handles or claims a call, a notification is automatically sent. Here's how to test it:
 
+### Step 1: Create a Missed Call (if you don't have one)
+
+First, make sure you have a missed call in the database. You can use the SQL above or the `/api/notify` endpoint.
+
+### Step 2: Update Call Status to "Handled"
+
+**Linux/Mac/Git Bash:**
+```bash
+curl -X PATCH https://calls.nva.global/api/calls/38651234567 \
+  -H "Content-Type: application/json" \
+  -H "x-auth-password: YOUR_PASSWORD" \
+  -d '{"status": "handled", "extension": "101"}'
+```
+
+**Windows PowerShell:**
+```powershell
+# Option 1: Use curl.exe explicitly
+curl.exe -X PATCH https://calls.nva.global/api/calls/38651234567 -H "Content-Type: application/json" -H "x-auth-password: YOUR_PASSWORD" -d "{\"status\": \"handled\", \"extension\": \"101\"}"
+
+# Option 2: Use PowerShell's Invoke-RestMethod (recommended)
 $headers = @{
     "Content-Type" = "application/json"
     "x-auth-password" = "cfcbdb854280bbfa09f38067153ccba4cf1449c52ca04788b602c1120f2c6325"
 }
 $body = @{
-    phone = "38651234567"
-    status = "missed"
+    status = "handled"
+    extension = "101"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "https://calls.nva.global/api/notify" -Method POST -Headers $headers -Body $body
+Invoke-RestMethod -Uri "https://calls.nva.global/api/calls/38651234567" -Method PATCH -Headers $headers -Body $body
+```
 
+**Windows CMD:**
+```cmd
+curl.exe -X PATCH https://calls.nva.global/api/calls/38651234567 -H "Content-Type: application/json" -H "x-auth-password: YOUR_PASSWORD" -d "{\"status\": \"handled\", \"extension\": \"101\"}"
+```
 
+### Step 3: Test "Claimed" Status
+
+To test when someone claims a call:
+
+**PowerShell:**
+```powershell
+$headers = @{
+    "Content-Type" = "application/json"
+    "x-auth-password" = "YOUR_PASSWORD"
+}
+$body = @{
+    status = "claimed"
+    extension = "102"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "https://calls.nva.global/api/calls/38651234567" -Method PATCH -Headers $headers -Body $body
+```
+
+### What Notification You'll Receive
+
+- **For "handled"**: "Call from 38651234567 was handled by 101"
+- **For "claimed"**: "Call from 38651234567 was claimed by 102"
+
+**Note:** Replace `38651234567` with an actual phone number that exists in your `call_claims` table with status `'missed'`.
 
 ## OneSignal Notifications Setup
 
