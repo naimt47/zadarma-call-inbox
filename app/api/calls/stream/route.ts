@@ -1,11 +1,17 @@
-import { validateAuth } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export async function GET(req: Request) {
-  // Check authentication (device token or session token)
-  const auth = await validateAuth(req);
-  if (!auth.valid) {
-    console.log('SSE: Authentication failed');
+  // EventSource doesn't support custom headers, so get password from query param
+  const url = new URL(req.url);
+  const password = url.searchParams.get('password');
+  
+  if (!password) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  const isValid = await verifyPassword(password);
+  if (!isValid) {
     return new Response('Unauthorized', { status: 401 });
   }
   
@@ -22,7 +28,11 @@ export async function GET(req: Request) {
       // Poll database every 2 seconds and send updates
       const interval = setInterval(async () => {
         try {
-          const queryText = `SELECT 
+          // Query call_claims table
+          // Filter: status IN ('missed', 'claimed') AND expires_at > NOW()
+          // Sort: updated_at DESC (uses index idx_call_claims_updated_at)
+          const result = await query(
+            `SELECT 
               phone_norm,
               last_pbx_call_id,
               status,
@@ -33,10 +43,8 @@ export async function GET(req: Request) {
             WHERE status IN ('missed', 'claimed')
               AND expires_at > NOW()
             ORDER BY updated_at DESC
-            LIMIT 100`;
-          
-          // Always get ALL calls (not just updates) to prevent disappearing
-          const result = await query(queryText);
+            LIMIT 100`
+          );
           
           // Always send full list to prevent calls from disappearing
           controller.enqueue(
@@ -50,11 +58,6 @@ export async function GET(req: Request) {
           }
         } catch (error: any) {
           console.error('SSE stream error:', error);
-          console.error('SSE error details:', {
-            message: error.message,
-            code: error.code,
-            detail: error.detail
-          });
           // Don't close on error, just log it
         }
       }, 2000); // Check every 2 seconds

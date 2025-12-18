@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatPhoneNumber } from '@/lib/utils';
+import { getAuthHeaders, getAuthPassword, isAuthenticated } from '@/lib/client-auth';
 
 interface Call {
   phone_norm: string;
@@ -20,8 +21,13 @@ export default function CallsPage() {
   const [extension, setExtension] = useState('');
   const [claiming, setClaiming] = useState<string | null>(null);
   
-  // Load extension from localStorage
+  // Check auth and load extension from localStorage
   useEffect(() => {
+    if (!isAuthenticated()) {
+      window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
+      return;
+    }
+    
     const savedExtension = localStorage.getItem('userExtension');
     if (savedExtension) {
       setExtension(savedExtension);
@@ -30,13 +36,20 @@ export default function CallsPage() {
   
   // Fetch initial calls
   useEffect(() => {
+    if (!isAuthenticated()) return;
+    
     async function fetchCalls() {
       try {
-        console.log('Frontend: Fetching calls from /api/calls');
+        const password = getAuthPassword();
+        if (!password) {
+          window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
+          return;
+        }
+        
         const res = await fetch('/api/calls', {
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeaders(),
           },
         });
         
@@ -88,9 +101,13 @@ export default function CallsPage() {
   
   // Set up SSE connection for real-time updates
   useEffect(() => {
-    // EventSource automatically sends cookies (including session cookie)
-    console.log('Frontend: Setting up SSE connection to /api/calls/stream');
-    const eventSource = new EventSource('/api/calls/stream');
+    if (!isAuthenticated()) return;
+    
+    const password = getAuthPassword();
+    if (!password) return;
+    
+    // EventSource doesn't support custom headers, so use query param
+    const eventSource = new EventSource(`/api/calls/stream?password=${encodeURIComponent(password)}`);
     
     eventSource.onopen = () => {
       console.log('Frontend: SSE connection opened');
@@ -159,9 +176,9 @@ export default function CallsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({ status: 'claimed', extension: extension.trim() }),
-        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -189,9 +206,9 @@ export default function CallsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({ status: 'handled', extension: extension.trim() }),
-        credentials: 'include',
       });
       
       if (!res.ok) {

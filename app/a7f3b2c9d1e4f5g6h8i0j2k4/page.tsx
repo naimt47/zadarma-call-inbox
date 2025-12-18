@@ -10,13 +10,36 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   
-  // Load saved extension
+  // Load saved extension and check if already logged in
   useEffect(() => {
-    const saved = localStorage.getItem('userExtension');
-    if (saved) {
-      setExtension(saved);
+    const savedExtension = localStorage.getItem('userExtension');
+    const savedPassword = localStorage.getItem('authPassword');
+    
+    if (savedExtension) {
+      setExtension(savedExtension);
     }
-  }, []);
+    
+    // If password exists, try to validate it
+    if (savedPassword) {
+      // Check if password is still valid by making a test request
+      fetch('/api/calls', {
+        headers: {
+          'x-auth-password': savedPassword,
+        },
+      }).then(res => {
+        if (res.ok) {
+          // Password is valid, redirect to calls
+          router.push('/calls');
+        } else {
+          // Password invalid, clear it
+          localStorage.removeItem('authPassword');
+        }
+      }).catch(() => {
+        // Error, clear password
+        localStorage.removeItem('authPassword');
+      });
+    }
+  }, [router]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,28 +56,15 @@ export default function LoginPage() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ password }),
       });
       
       if (res.ok) {
-        // Save extension
+        // Save password and extension to localStorage (persists across tabs/restarts)
+        localStorage.setItem('authPassword', password);
         localStorage.setItem('userExtension', extension.trim());
         
-        // Check if cookie was set by checking response headers
-        const setCookieHeader = res.headers.get('set-cookie');
-        console.log('Frontend Login: Set-Cookie header:', setCookieHeader);
-        
-        // Check all cookies in browser
-        console.log('Frontend Login: Document cookies:', document.cookie);
-        
-        // Wait a brief moment to ensure cookie is processed by browser
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Check cookies again after delay
-        console.log('Frontend Login: Document cookies after delay:', document.cookie);
-        
-        // Force a hard navigation to ensure cookies are set
+        // Redirect to calls
         window.location.href = '/calls';
       } else {
         const data = await res.json();
@@ -120,4 +130,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { formatPhoneNumber } from '@/lib/utils';
 import Link from 'next/link';
+import { getAuthHeaders, isAuthenticated } from '@/lib/client-auth';
 
 interface Mapping {
   phone_number: string;
@@ -29,11 +30,16 @@ export default function MappingsPage() {
   
   // Fetch mappings
   const fetchMappings = async () => {
+    if (!isAuthenticated()) {
+      window.location.href = '/a7f3b2c9d1e4f5g6h8i0j2k4';
+      return;
+    }
+    
     try {
       const res = await fetch('/api/mappings', {
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
       });
       if (res.status === 401) {
@@ -69,9 +75,9 @@ export default function MappingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(formData),
-        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -108,12 +114,12 @@ export default function MappingsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           extension: editingData.extension,
           expires_at: editingData.expires_at,
         }),
-        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -140,8 +146,8 @@ export default function MappingsPage() {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
-        credentials: 'include',
       });
       
       if (!res.ok) {
