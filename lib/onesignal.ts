@@ -8,11 +8,21 @@ function getOneSignalClient(): OneSignal.Client | null {
   
   if (!appId || !restApiKey) {
     console.warn('OneSignal credentials not configured. Notifications will be skipped.');
+    console.warn(`ONESIGNAL_APP_ID: ${appId ? 'SET' : 'MISSING'}, ONESIGNAL_REST_API_KEY: ${restApiKey ? 'SET' : 'MISSING'}`);
     return null;
   }
   
   if (!client) {
-    client = new OneSignal.Client(appId, restApiKey);
+    try {
+      // Log first few characters of API key for verification (without exposing full key)
+      const keyPreview = restApiKey ? `${restApiKey.substring(0, 10)}...` : 'MISSING';
+      console.log(`Initializing OneSignal client with App ID: ${appId}, API Key: ${keyPreview}`);
+      client = new OneSignal.Client(appId, restApiKey);
+      console.log('OneSignal client initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize OneSignal client:', error);
+      return null;
+    }
   }
   
   return client;
@@ -61,8 +71,15 @@ export async function sendCallStatusNotification(data: NotificationData): Promis
     
     await oneSignalClient.createNotification(notification);
     console.log('OneSignal notification sent:', title, message);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to send OneSignal notification:', error);
+    // Log more details for debugging
+    if (error.body) {
+      console.error('OneSignal error body:', error.body);
+    }
+    if (error.statusCode) {
+      console.error('OneSignal status code:', error.statusCode);
+    }
     // Don't throw - notifications are non-critical
   }
 }

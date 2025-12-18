@@ -65,6 +65,21 @@ DO UPDATE SET
   expires_at = NOW() + INTERVAL '1 hour';
 ```
 
+
+
+$headers = @{
+    "Content-Type" = "application/json"
+    "x-auth-password" = "cfcbdb854280bbfa09f38067153ccba4cf1449c52ca04788b602c1120f2c6325"
+}
+$body = @{
+    phone = "38651234567"
+    status = "missed"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "https://calls.nva.global/api/notify" -Method POST -Headers $headers -Body $body
+
+
+
 ## OneSignal Notifications Setup
 
 **You need to add ONE line of code to your webhook handler.**
@@ -77,11 +92,26 @@ Your webhook handler calls `/api/notify` when it creates a new missed call. That
 
 You can also manually test it:
 
+**Linux/Mac/Git Bash:**
 ```bash
 curl -X POST https://calls.nva.global/api/notify \
   -H "Content-Type: application/json" \
   -H "x-auth-password: YOUR_PASSWORD" \
   -d '{"phone": "38651234567", "status": "missed"}'
+```
+
+**Windows PowerShell:**
+```powershell
+# Option 1: Use curl.exe explicitly
+curl.exe -X POST https://calls.nva.global/api/notify -H "Content-Type: application/json" -H "x-auth-password: YOUR_PASSWORD" -d "{\"phone\": \"38651234567\", \"status\": \"missed\"}"
+
+# Option 2: Use PowerShell's Invoke-RestMethod (recommended)
+Invoke-RestMethod -Uri "https://calls.nva.global/api/notify" -Method POST -Headers @{"Content-Type"="application/json"; "x-auth-password"="YOUR_PASSWORD"} -Body '{"phone":"38651234567","status":"missed"}'
+```
+
+**Windows CMD:**
+```cmd
+curl.exe -X POST https://calls.nva.global/api/notify -H "Content-Type: application/json" -H "x-auth-password: YOUR_PASSWORD" -d "{\"phone\": \"38651234567\", \"status\": \"missed\"}"
 ```
 
 **See `WEBHOOK_INTEGRATION.md` for the exact code to add to your webhook handler.**
